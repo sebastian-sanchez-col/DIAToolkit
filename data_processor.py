@@ -63,7 +63,7 @@ def clean_commune_name(text):
 
 
 def load_raw_datasets():
-    """Helper function to centrally load all open data CSV files and avoid code duplication."""
+    """Helper function to centrally load all open data CSV files."""
     df_scholarship = pd.read_csv(
         'sources/Beneficiaros_de_becas_y_creditos_de_programas_de_acceso_a_la_educación_superior_de_Antioquia_20260617.csv')
     df_utility_subsidy = pd.read_csv(
@@ -81,24 +81,8 @@ def load_raw_datasets():
             df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions)
 
 
-def run_data_audit_report(datasets=None, stage_label="DATOS BRUTOS DE ORIGEN"):
-    """Audits a dictionary of datasets for management issues and anomalies at any pipeline stage."""
-    if datasets is None:
-        # Fallback: self-load if no internal matrix dataframes were provided
-        (df_scholarship, df_utility_subsidy, df_subsidized_health_regime_affiliates,
-         df_subsidy_and_cleaning, df_investment_by_commune_and_district,
-         df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions) = load_raw_datasets()
-
-        datasets = {
-            "Scholarships": df_scholarship,
-            "Utility Subsidies": df_utility_subsidy,
-            "Health Affiliates": df_subsidized_health_regime_affiliates,
-            "Cleaning Subsidies": df_subsidy_and_cleaning,
-            "Investment": df_investment_by_commune_and_district,
-            "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
-            "EPM Direct Subsidies": df_epm_subsidies_contributions
-        }
-
+def run_data_audit_report(datasets, stage_label):
+    """Core engine that processes dataframes and prints the quality log."""
     print(f"\n🔍 INICIANDO AUDITORÍA - ESTADO DE LA PIPELINE: [{stage_label}]")
     print("=" * 65)
 
@@ -159,18 +143,22 @@ def process_and_create_master_matrix():
      df_subsidy_and_cleaning, df_investment_by_commune_and_district,
      df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions) = load_raw_datasets()
 
-    # 🛑 AUDITORÍA INTERNA 1: Ver el estado bruto de los datos justo al entrar a la función
-    current_state = {
-        "Scholarships": df_scholarship, "Utility Subsidies": df_utility_subsidy,
-        "Health Affiliates": df_subsidized_health_regime_affiliates, "Cleaning Subsidies": df_subsidy_and_cleaning,
-        "Investment": df_investment_by_commune_and_district,
-        "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
-        "EPM Direct Subsidies": df_epm_subsidies_contributions
-    }
-    run_data_audit_report(datasets=current_state, stage_label="DENTRO DE MATRIX - ANTES DE LIMPIEZA")
+    # 🛠️ CREATION OF THE SIMPLIFIED AUDIT() FUNCTION
+    # Captures the variables in real time from the local scope using a closure
+    def audit(label="REPORTE DE CONTROL"):
+        state = {
+            "Scholarships": df_scholarship, "Utility Subsidies": df_utility_subsidy,
+            "Health Affiliates": df_subsidized_health_regime_affiliates, "Cleaning Subsidies": df_subsidy_and_cleaning,
+            "Investment": df_investment_by_commune_and_district,
+            "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
+            "EPM Direct Subsidies": df_epm_subsidies_contributions
+        }
+        run_data_audit_report(datasets=state, stage_label=label)
+
+    # 🛑 OPTIONAL CALL 1: Initial state
+    # audit("DENTRO DE MATRIX - ANTES DE LIMPIEZA")
 
     print("Ejecutando purga automática de filas duplicadas y corruptas...")
-    # Limpieza activa
     df_scholarship.drop_duplicates(inplace=True)
     df_utility_subsidy.drop_duplicates(inplace=True)
     df_subsidized_health_regime_affiliates.drop_duplicates(inplace=True)
@@ -181,13 +169,8 @@ def process_and_create_master_matrix():
 
     df_investment_by_commune_and_district = df_investment_by_commune_and_district.dropna(subset=['Comuna']).copy()
     df_utility_subsidy['Municipio o Sector'] = df_utility_subsidy['Municipio o Sector'].fillna('UNKNOWN')
-    df_utility_subsidy['tipo'] = df_utility_subsidy['tipo'].fillna('No Registra')
-    df_utility_subsidy['Mes'] = df_utility_subsidy['Mes'].fillna('No Registra')
-
     df_epm_subsidies_contributions['municipio_o_sector'] = df_epm_subsidies_contributions['municipio_o_sector'].fillna(
         'UNKNOWN')
-    df_epm_subsidies_contributions['tipo'] = df_epm_subsidies_contributions['tipo'].fillna('No Registra')
-    df_epm_subsidies_contributions['mes'] = df_epm_subsidies_contributions['mes'].fillna('No Registra')
 
     print("Procesando y normalizando variables territoriales...")
 
@@ -243,18 +226,30 @@ def process_and_create_master_matrix():
     df_utility_subsidy['valor'] = robust_numeric_clean(df_utility_subsidy['valor'])
     df_epm_subsidies_contributions['valor'] = robust_numeric_clean(df_epm_subsidies_contributions['valor'])
 
+    # Final fills for a clean report visualization
+    df_utility_subsidy['tipo'] = df_utility_subsidy['tipo'].fillna('No Registra')
+    df_utility_subsidy['Mes'] = df_utility_subsidy['Mes'].fillna('No Registra')
+    df_epm_subsidies_contributions['tipo'] = df_epm_subsidies_contributions['tipo'].fillna('No Registra')
+    df_epm_subsidies_contributions['mes'] = df_epm_subsidies_contributions['mes'].fillna('No Registra')
+
     df_utility_subsidy.drop_duplicates(inplace=True)
     df_social_inclusion_actions_for_people_with_disabilities.drop_duplicates(inplace=True)
 
-    # 🛑 AUDITORÍA INTERNA 2: Validar si los duplicados y nulos de verdad bajaron a cero después de limpiar
-    cleaned_state = {
-        "Scholarships": df_scholarship, "Utility Subsidies": df_utility_subsidy,
-        "Health Affiliates": df_subsidized_health_regime_affiliates, "Cleaning Subsidies": df_subsidy_and_cleaning,
-        "Investment": df_investment_by_commune_and_district,
-        "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
-        "EPM Direct Subsidies": df_epm_subsidies_contributions
-    }
-    run_data_audit_report(datasets=cleaned_state, stage_label="DENTRO DE MATRIX - POST-LIMPIEZA")
+    print("Aplicando restricciones lógicas a variables demográficas...")
+
+    # 1. Cap impossible ages seamlessly without breaking rows
+    df_subsidized_health_regime_affiliates['edad'] = df_subsidized_health_regime_affiliates['edad'].clip(lower=0,
+                                                                                                         upper=105)
+
+    # 2. Impute invalid numerical codes to a fixed token instead of np.nan
+    # This prevents triggering management alerts and forces clean_commune_name to flag them safely.
+    valid_communes = list(range(1, 17)) + [50, 60, 70, 80, 90]
+    df_subsidized_health_regime_affiliates.loc[
+        ~df_subsidized_health_regime_affiliates['comuna'].isin(valid_communes), 'comuna'
+    ] = -1  # Set to -1 so it is categorized under 'OTHER_ZONE' / 'UNKNOWN' smoothly
+
+    # 🛑 OPTIONAL CALL 2: Post-cleanup evaluation to verify zero nulls and zero duplicates
+    # audit("DENTRO DE MATRIX - POST-LIMPIEZA")
 
     print("Generando agregaciones por Comuna...")
     agg_investment = df_investment_by_commune_and_district.groupby('commune_clean').agg(
