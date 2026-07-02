@@ -1,6 +1,5 @@
 # model_trainer.py
-import pandas as pd
-import numpy as np
+
 from sklearn.cluster import KMeans
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import StandardScaler

@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import numpy as np
 
 
 def clean_commune_name(text):
@@ -65,25 +66,89 @@ def load_raw_datasets():
     """Helper function to centrally load all open data CSV files and avoid code duplication."""
     df_scholarship = pd.read_csv(
         'sources/Beneficiaros_de_becas_y_creditos_de_programas_de_acceso_a_la_educación_superior_de_Antioquia_20260617.csv')
-
     df_utility_subsidy = pd.read_csv(
         'sources/Subsidios_y_Contribuciones_de_Servicios_Públicos_Domiciliarios_–_EPM_20260617.csv')
-
     df_subsidized_health_regime_affiliates = pd.read_csv('sources/subsidiado.csv')
-
     df_subsidy_and_cleaning = pd.read_csv('sources/subsidios_y_contribuciones_aseo.csv')
-
     df_investment_by_commune_and_district = pd.read_csv(
         'sources/inversion_por_comunas_y_corregimientos_2017_medellin.csv')
-
     df_social_inclusion_actions_for_people_with_disabilities = pd.read_csv(
         'sources/implementacion_acciones_personas_discapacidad_familiares_cuidadores_2023.csv')
-
     df_epm_subsidies_contributions = pd.read_csv('sources/subsidio_contribuciones_epm.csv')
 
     return (df_scholarship, df_utility_subsidy, df_subsidized_health_regime_affiliates,
             df_subsidy_and_cleaning, df_investment_by_commune_and_district,
             df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions)
+
+
+def run_data_audit_report(datasets=None, stage_label="DATOS BRUTOS DE ORIGEN"):
+    """Audits a dictionary of datasets for management issues and anomalies at any pipeline stage."""
+    if datasets is None:
+        # Fallback: self-load if no internal matrix dataframes were provided
+        (df_scholarship, df_utility_subsidy, df_subsidized_health_regime_affiliates,
+         df_subsidy_and_cleaning, df_investment_by_commune_and_district,
+         df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions) = load_raw_datasets()
+
+        datasets = {
+            "Scholarships": df_scholarship,
+            "Utility Subsidies": df_utility_subsidy,
+            "Health Affiliates": df_subsidized_health_regime_affiliates,
+            "Cleaning Subsidies": df_subsidy_and_cleaning,
+            "Investment": df_investment_by_commune_and_district,
+            "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
+            "EPM Direct Subsidies": df_epm_subsidies_contributions
+        }
+
+    print(f"\n🔍 INICIANDO AUDITORÍA - ESTADO DE LA PIPELINE: [{stage_label}]")
+    print("=" * 65)
+
+    for name, df in datasets.items():
+        print(f"\n📊 DataFrame: {name} | Filas: {len(df)} | Columnas: {len(df.columns)}")
+        print("-" * 45)
+
+        # 1. BAD DATA MANAGEMENT CHECKS
+        null_counts = df.isnull().sum()
+        critical_nulls = null_counts[null_counts > 0]
+        if not critical_nulls.empty:
+            print("❌ MALA GESTIÓN: Se encontraron valores nulos o faltantes:")
+            for col, val in critical_nulls.items():
+                print(f"  └─ Columna '{col}': {val} filas faltantes ({val / len(df) * 100:.2f}%)")
+        else:
+            print("✅ GESTIÓN: Cero celdas nulas o faltantes detectadas.")
+
+        duplicates = df.duplicated().sum()
+        if duplicates > 0:
+            print(f"❌ MALA GESTIÓN: ¡Se detectaron {duplicates} filas idénticas duplicadas!")
+        else:
+            print("✅ GESTIÓN: Cero filas duplicadas en este entorno.")
+
+        # 2. STRUCTURAL DATA ANOMALY CHECKS
+        money_cols = [c for c in df.columns if c in ['Inversion', 'total_subsidio', 'valor']]
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist() + money_cols
+
+        for col in set(numeric_cols):
+            if col in df.columns:
+                if df[col].dtype == 'object':
+                    series_to_check = df[col].astype(str).str.replace(r'[^\d,.-]', '', regex=True)
+                    series_to_check = pd.to_numeric(series_to_check.str.replace('.', '').str.replace(',', '.'),
+                                                    errors='coerce').fillna(0)
+                else:
+                    series_to_check = df[col]
+
+                q1 = series_to_check.quantile(0.25)
+                q3 = series_to_check.quantile(0.75)
+                iqr = q3 - q1
+
+                lower_bound = q1 - (1.5 * iqr)
+                upper_bound = q3 + (1.5 * iqr)
+
+                outliers = df[(series_to_check < lower_bound) | (series_to_check > upper_bound)]
+                if len(outliers) > 0 and iqr > 0:
+                    print(f"⚠️ ANOMALÍA: La columna '{col}' contiene {len(outliers)} outliers.")
+                    print(
+                        f"  └─ Rango normal: {lower_bound:.2f} a {upper_bound:.2f} | Máx: {series_to_check.max():.2f}")
+
+    print("\n" + "=" * 65)
 
 
 def process_and_create_master_matrix():
@@ -94,6 +159,36 @@ def process_and_create_master_matrix():
      df_subsidy_and_cleaning, df_investment_by_commune_and_district,
      df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions) = load_raw_datasets()
 
+    # 🛑 AUDITORÍA INTERNA 1: Ver el estado bruto de los datos justo al entrar a la función
+    current_state = {
+        "Scholarships": df_scholarship, "Utility Subsidies": df_utility_subsidy,
+        "Health Affiliates": df_subsidized_health_regime_affiliates, "Cleaning Subsidies": df_subsidy_and_cleaning,
+        "Investment": df_investment_by_commune_and_district,
+        "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
+        "EPM Direct Subsidies": df_epm_subsidies_contributions
+    }
+    run_data_audit_report(datasets=current_state, stage_label="DENTRO DE MATRIX - ANTES DE LIMPIEZA")
+
+    print("Ejecutando purga automática de filas duplicadas y corruptas...")
+    # Limpieza activa
+    df_scholarship.drop_duplicates(inplace=True)
+    df_utility_subsidy.drop_duplicates(inplace=True)
+    df_subsidized_health_regime_affiliates.drop_duplicates(inplace=True)
+    df_subsidy_and_cleaning.drop_duplicates(inplace=True)
+    df_investment_by_commune_and_district.drop_duplicates(inplace=True)
+    df_social_inclusion_actions_for_people_with_disabilities.drop_duplicates(inplace=True)
+    df_epm_subsidies_contributions.drop_duplicates(inplace=True)
+
+    df_investment_by_commune_and_district = df_investment_by_commune_and_district.dropna(subset=['Comuna']).copy()
+    df_utility_subsidy['Municipio o Sector'] = df_utility_subsidy['Municipio o Sector'].fillna('UNKNOWN')
+    df_utility_subsidy['tipo'] = df_utility_subsidy['tipo'].fillna('No Registra')
+    df_utility_subsidy['Mes'] = df_utility_subsidy['Mes'].fillna('No Registra')
+
+    df_epm_subsidies_contributions['municipio_o_sector'] = df_epm_subsidies_contributions['municipio_o_sector'].fillna(
+        'UNKNOWN')
+    df_epm_subsidies_contributions['tipo'] = df_epm_subsidies_contributions['tipo'].fillna('No Registra')
+    df_epm_subsidies_contributions['mes'] = df_epm_subsidies_contributions['mes'].fillna('No Registra')
+
     print("Procesando y normalizando variables territoriales...")
 
     # 2. Smart Geographic Homologation
@@ -103,7 +198,7 @@ def process_and_create_master_matrix():
     df_investment_by_commune_and_district['commune_clean'] = df_investment_by_commune_and_district[
         'Nombre Comuna'].apply(clean_commune_name)
     df_social_inclusion_actions_for_people_with_disabilities['commune_clean'] = \
-        df_social_inclusion_actions_for_people_with_disabilities['COMUNA DE RESIDENCIA'].apply(clean_commune_name)
+    df_social_inclusion_actions_for_people_with_disabilities['COMUNA DE RESIDENCIA'].apply(clean_commune_name)
     df_scholarship['commune_clean'] = df_scholarship['MUNICIPIO DE RESIDENCIA'].apply(clean_commune_name)
 
     if 'municipio_o_sector' in df_subsidy_and_cleaning.columns:
@@ -148,53 +243,52 @@ def process_and_create_master_matrix():
     df_utility_subsidy['valor'] = robust_numeric_clean(df_utility_subsidy['valor'])
     df_epm_subsidies_contributions['valor'] = robust_numeric_clean(df_epm_subsidies_contributions['valor'])
 
+    df_utility_subsidy.drop_duplicates(inplace=True)
+    df_social_inclusion_actions_for_people_with_disabilities.drop_duplicates(inplace=True)
+
+    # 🛑 AUDITORÍA INTERNA 2: Validar si los duplicados y nulos de verdad bajaron a cero después de limpiar
+    cleaned_state = {
+        "Scholarships": df_scholarship, "Utility Subsidies": df_utility_subsidy,
+        "Health Affiliates": df_subsidized_health_regime_affiliates, "Cleaning Subsidies": df_subsidy_and_cleaning,
+        "Investment": df_investment_by_commune_and_district,
+        "Disability & Inclusion": df_social_inclusion_actions_for_people_with_disabilities,
+        "EPM Direct Subsidies": df_epm_subsidies_contributions
+    }
+    run_data_audit_report(datasets=cleaned_state, stage_label="DENTRO DE MATRIX - POST-LIMPIEZA")
+
     print("Generando agregaciones por Comuna...")
-
-    # 4. Sectoral Aggregations Processing (Exactly ONCE per variable)
     agg_investment = df_investment_by_commune_and_district.groupby('commune_clean').agg(
-        total_investment=('Inversion', 'sum')
-    ).reset_index()
-
+        total_investment=('Inversion', 'sum')).reset_index()
     agg_health = df_subsidized_health_regime_affiliates.groupby('commune_clean').agg(
-        total_subsidized_health_affiliates=('consecutivo', 'count'),
-        mean_health_age=('edad', 'mean')
-    ).reset_index()
-
+        total_subsidized_health_affiliates=('consecutivo', 'count'), mean_health_age=('edad', 'mean')).reset_index()
     agg_inclusion = df_social_inclusion_actions_for_people_with_disabilities.groupby('commune_clean').agg(
         total_disabled_and_inclusion_beneficiaries=('CONDICIÓN DE DISCAPACIDAD', 'count'),
-        mean_inclusion_age=('AÑOS CUMPLIDOS AL INGRESO DEL PROGRAMA', 'mean')
-    ).reset_index()
-
+        mean_inclusion_age=('AÑOS CUMPLIDOS AL INGRESO DEL PROGRAMA', 'mean')).reset_index()
     agg_scholarships = df_scholarship.groupby('commune_clean').agg(
-        total_scholarship_beneficiaries=('CONVOCATORIA', 'count')
-    ).reset_index()
+        total_scholarship_beneficiaries=('CONVOCATORIA', 'count')).reset_index()
 
     # Safe calculation of Municipal Global Totales
     total_health_affiliates_global = agg_health['total_subsidized_health_affiliates'].sum() + 1
-
     total_utility_val = df_utility_subsidy['valor'].sum()
     mean_utility_strat = df_utility_subsidy['estrato'].mean()
     total_epm_contrib_val = df_epm_subsidies_contributions['valor'].sum()
-
     total_cleaning_val = df_subsidy_and_cleaning['total_subsidio'].sum()
     total_cleaning_subs = df_subsidy_and_cleaning['suscriptores_subsidiados'].sum()
 
     # Proportional Distribution of Public Utilities Based on Real Vulnerable Demographics
     agg_utilities = agg_health[['commune_clean']].copy()
     agg_utilities['total_utility_subsidies'] = (
-            (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) * (
-            total_utility_val + total_epm_contrib_val)
-    )
+                (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) * (
+                    total_utility_val + total_epm_contrib_val))
     agg_utilities['mean_utility_stratum'] = mean_utility_strat
 
     # Proportional Distribution of Cleaning Subsidy
     agg_cleaning = agg_health[['commune_clean']].copy()
-    agg_cleaning['total_cleaning_subsidies'] = (
-            (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) * total_cleaning_val
-    )
-    agg_cleaning['total_subsidized_cleaning_subscribers'] = (
-            (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) * total_cleaning_subs
-    ).astype(int)
+    agg_cleaning['total_cleaning_subsidies'] = ((agg_health[
+                                                     'total_subsidized_health_affiliates'] / total_health_affiliates_global) * total_cleaning_val)
+    agg_cleaning['total_subsidized_cleaning_subscribers'] = ((agg_health[
+                                                                  'total_subsidized_health_affiliates'] / total_health_affiliates_global) * total_cleaning_subs).astype(
+        int)
 
     print("Consolidando Matriz Maestra Analítica (Data Mashup)...")
 
@@ -211,10 +305,8 @@ def process_and_create_master_matrix():
     master_matrix = pd.merge(master_matrix, agg_scholarships, on='commune_clean', how='left')
     master_matrix = pd.merge(master_matrix, agg_cleaning, on='commune_clean', how='left')
 
-    # Safely fill with 0 for communes that do not have specific records in a given sector
     master_matrix = master_matrix.fillna(0)
 
-    # 6. Final Feature Engineering (Synthetic Variables)
     master_matrix['investment_per_capita_subsidized'] = (
             master_matrix['total_investment'] / (master_matrix['total_subsidized_health_affiliates'] + 1)
     )
@@ -230,22 +322,15 @@ def process_and_create_master_matrix():
 
 
 def print_column_names():
-    # 1. Reusing the centralized dataset loader function
     (df_scholarship, df_utility_subsidy, df_subsidized_health_regime_affiliates,
      df_subsidy_and_cleaning, df_investment_by_commune_and_district,
      df_social_inclusion_actions_for_people_with_disabilities, df_epm_subsidies_contributions) = load_raw_datasets()
 
-    print('Beneficiarios de becas y créditos')
-    print(df_scholarship.columns.tolist())
-    print('Subsidios y contribuciones de servicios')
-    print(df_utility_subsidy.columns.tolist())
-    print('Afiliados al regimen subsidiado')
-    print(df_subsidized_health_regime_affiliates.columns.tolist())
-    print('Subsidios y contribuciones aseo')
-    print(df_subsidy_and_cleaning.columns.tolist())
-    print('Inversión por comuna y corregimiento Medellín 2017')
-    print(df_investment_by_commune_and_district.columns.tolist())
-    print('Subsidios y Contribuciones-EPM - Energía, Gas, Acueducto y Alcantarillado')
-    print(df_epm_subsidies_contributions.columns.tolist())
-    print('Implementación de acciones de inclusión social para personas con discapacidad familiares y cuidadores 2023')
-    print(df_social_inclusion_actions_for_people_with_disabilities.columns.tolist())
+    print('Beneficiarios de becas y créditos:', df_scholarship.columns.tolist())
+    print('Subsidios y contribuciones de servicios:', df_utility_subsidy.columns.tolist())
+    print('Afiliados al regimen subsidiado:', df_subsidized_health_regime_affiliates.columns.tolist())
+    print('Subsidios y contribuciones aseo:', df_subsidy_and_cleaning.columns.tolist())
+    print('Inversión por comuna y corregimiento Medellín 2017:', df_investment_by_commune_and_district.columns.tolist())
+    print('Subsidios y Contribuciones-EPM:', df_epm_subsidies_contributions.columns.tolist())
+    print('Implementación de acciones de inclusión social:',
+          df_social_inclusion_actions_for_people_with_disabilities.columns.tolist())
