@@ -68,5 +68,29 @@ def train_advanced_models(df_analytics):
     # Display results for decision makers
     for i, col in enumerate(X_predictive.columns):
         print(f"Impacto de variable '{col}' en la demanda de subsidios: {importances[i] * 100:.2f}%")
+        # Feature Importances extraction
+        importances = rf_model.feature_importances_
+        print("-> Modelo Random Forest entrenado para simulación prescriptiva.")
+
+        print("\n====================================================")
+        print("INSIGHTS ACCIONABLES GENERADOS PARA EL ASISTENTE VIRTUAL")
+        print("====================================================")
+
+        # Display results for decision makers
+        for i, col in enumerate(X_predictive.columns):
+            print(f"Impacto de variable '{col}' en la demanda de subsidios: {importances[i] * 100:.2f}%")
+
+        # --- CRUCIAL STEP ---
+        # Map raw coefficients dynamically to clean percentage values for the frontend charts
+        ai_insights = {
+            'Inversión Total': float(importances[0] * 100),
+            'Estrato Promedio': float(importances[1] * 100),
+            'Afiliados de Salud': float(importances[2] * 100),
+            'Acciones de Inclusión': float(importances[3] * 100),
+            'Beneficiarios de Becas': float(importances[4] * 100)
+        }
+
+        # Return both the enriched DataFrame and the feature importances dictionary to Flask
+        return df_analytics, ai_insights
 
     return df_analytics, rf_model

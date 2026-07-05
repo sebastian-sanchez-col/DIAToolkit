@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asistente de Datos Abiertos - Datos al Ecosistema 2026</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-light">
+
+    <div class="container my-5">
+        <!-- Header optimized for Reto 7: Innovación y Tecnología -->
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+            <div>
+                <h2>🤖 Asistente Virtual de Datos Abiertos Territorial</h2>
+                <small class="text-muted">Concurso Datos al Ecosistema 2026 | Categoría: IA Aplicada a Datos Abiertos</small>
+            </div>
+            <span class="badge bg-primary px-3 py-2">Reto 7: Innovación y Tecnología Cumplido</span>
+        </div>
+
+        <!-- Metric Cards Summarizing Open Data Sets -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-dark mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title text-uppercase font-weight-bold text-info">Tecnología Emergente</h6>
+                        <p class="card-text fs-5">Random Forest Regressor y K-Means</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-danger mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title text-uppercase font-weight-bold text-warning">Zona de Mayor Demanda</h6>
+                        <p class="card-text fs-5 fw-bold">{{ top_commune }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-success mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h6 class="card-title text-uppercase font-weight-bold">Apropiación Ciudadana</h6>
+                        <p class="card-text fs-5">Acceso democratizado a datos puros</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CITIZEN INTERACTIVE ASSISTANT WINDOW -->
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <div class="card border-primary shadow">
+                    <div class="card-header bg-primary text-white font-weight-bold fs-5 d-flex align-items-center">
+                        🔮 Consulta Interactiva al Asistente Virtual Predictivo
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text text-secondary">
+                            <strong>¿Cómo funciona?</strong> Este asistente interactúa con un modelo predictivo entrenado con múltiples conjuntos de datos abiertos extraídos de <em>datos.gov.co</em>. Mueve los controles para simular las características de una comuna imaginaria y presiona el botón para que la IA estime la asignación presupuestal requerida para subsidios públicos combinados.
+                        </p>
+                        <hr>
+                        
+                        <form id="assistantForm" class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-dark">👥 Población en Régimen Subsidiado (Salud)</label>
+                                <input type="range" class="form-range" name="health_affiliates" min="0" max="100000" step="100" value="35000" oninput="this.nextElementSibling.value = Number(this.value).toLocaleString()">
+                                <output class="badge bg-secondary">35,000</output>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-dark">💰 Inversión Pública Proyectada ($)</label>
+                                <input type="range" class="form-range" name="investment" min="0" max="25000000000" step="50000000" value="4500000000" oninput="this.nextElementSibling.value = '$' + Number(this.value).toLocaleString()">
+                                <output class="badge bg-secondary">$4,500,000,000</output>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-dark">🏠 Estrato Socioeconómico Promedio</label>
+                                <input type="range" class="form-range" name="stratum" min="1" max="6" step="0.1" value="2.1" oninput="this.nextElementSibling.value = this.value">
+                                <output class="badge bg-secondary">2.1</output>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-dark">♿ Beneficiarios de Programas de Discapacidad</label>
+                                <input type="range" class="form-range" name="disability_programs" min="0" max="1500" step="10" value="320" oninput="this.nextElementSibling.value = this.value">
+                                <output class="badge bg-secondary">320</output>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold text-dark">🎓 Estudiantes con Becas de Educación Superior</label>
+                                <input type="range" class="form-range" name="scholarships" min="0" max="600" step="5" value="150" oninput="this.nextElementSibling.value = this.value">
+                                <output class="badge bg-secondary">150</output>
+                            </div>
+                            
+                            <div class="col-md-4 d-flex align-items-center">
+                                <button type="button" onclick="queryVirtualAssistant()" class="btn btn-primary w-100 py-3 fw-bold shadow">
+                                    ⚡ Consultar al Asistente Virtual
+                                </button>
+                            </div>
+                        </form>
+
+                        <div class="mt-4 p-3 bg-dark rounded d-flex justify-content-between align-items-center border-start border-warning border-5">
+                            <span class="fs-5 text-white mb-0 fw-bold">🤖 Respuesta de la IA — Demanda Presupuestal Calculada:</span>
+                            <span id="assistantResponse" class="fs-2 fw-bold text-warning">$ 0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visual Analytics Spectrum Row -->
+        <div class="row mb-5">
+            <div class="col-md-7">
+                <div class="card p-3 shadow-sm h-100">
+                    <h5 class="card-title text-secondary">Distribución Real de Subsidios Combinados por Comuna ($)</h5>
+                    <canvas id="subsidiesChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="card p-3 shadow-sm h-100">
+                    <h5 class="card-title text-secondary">Análisis de Importancia del Modelo (Rigor IA)</h5>
+                    <canvas id="aiInsightsChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Consolidated Master Table View -->
+        <div class="card shadow-sm">
+            <div class="card-header bg-dark text-white font-weight-bold fs-5">
+                🎯 Matriz Maestra Consolidada — Datos de Entrada Abiertos
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0 align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Nombre Territorial (Comuna)</th>
+                            <th class="text-center">Clúster de Vulnerabilidad</th>
+                            <th class="text-center">Afiliados Salud</th>
+                            <th class="text-end">Inversión Asignada ($)</th>
+                            <th class="text-end">Subsidios Ejecutados ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in table_data %}
+                        <tr>
+                            <td class="fw-bold text-primary">{{ row.commune_clean }}</td>
+                            <td class="text-center">
+                                {% if row.vulnerability_cluster == 0 %}
+                                    <span class="badge bg-danger">Clúster Alto (0)</span>
+                                {% elif row.vulnerability_cluster == 1 %}
+                                    <span class="badge bg-warning text-dark">Clúster Medio (1)</span>
+                                {% else %}
+                                    <span class="badge bg-info text-dark">Clúster Bajo (2)</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">{{ "{:,.0f}".format(row.total_subsidized_health_affiliates) }}</td>
+                            <td class="text-end text-muted">${{ "{:,.2f}".format(row.total_investment) }}</td>
+                            <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.total_combined_subsidies) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend Core Scripts -->
+    <script>
+        // --- ASYNC CITIZEN ASSISTANT ROUTING ---
+        function queryVirtualAssistant() {
+            const form = document.getElementById('assistantForm');
+            const formData = new FormData(form);
+
+            fetch('/assistant_query', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if(data.success) {
+                    const formatter = new Intl.NumberFormat('es-CO', {
+                        style: 'currency',
+                        currency: 'COP',
+                        minimumFractionDigits: 2
+                    });
+                    document.getElementById('assistantResponse').innerText = formatter.format(data.predicted_subsidies);
+                } else {
+                    alert("Error consultando el asistente analítico: " + data.error);
+                }
+            })
+            .catch(err => console.error("Communication breakdown with the AI engine:", err));
+        }
+
+        // Render Open Data Subsidies Distribution Chart
+        const ctxSubsidies = document.getElementById('subsidiesChart').getContext('2d');
+        new Chart(ctxSubsidies, {
+            type: 'bar',
+            data: {
+                labels: {{ chart_labels | tojson }},
+                datasets: [{
+                    label: 'Subsidios Combinados Totales ($)',
+                    data: {{ chart_subsidies | tojson }},
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderColor: 'rgba(13, 110, 253, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true }
+        });
+
+        // Render AI Model Feature Importance Spectrum
+        const ctxAI = document.getElementById('aiInsightsChart').getContext('2d');
+        new Chart(ctxAI, {
+            type: 'pie',
+            data: {
+                labels: {{ ai_labels | tojson }},
+                datasets: [{
+                    data: {{ ai_values | tojson }},
+                    backgroundColor: ['#0d6efd', '#dc3545', '#ffc107', '#198754', '#6f42c1']
+                }]
+            },
+            options: { responsive: true }
+        });
+    </script>
+</body>
+</html>
