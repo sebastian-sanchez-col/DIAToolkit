@@ -3,36 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asistente de Datos Abiertos - Datos al Ecosistema 2026</title>
+    <title>Simulador de Escenarios Territoriales - Reto 7</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom indicator circles for the HTML legend */
+        .legend-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+    </style>
 </head>
 <body class="bg-light">
 
     <div class="container my-5">
-        <!-- Header optimized for Reto 7: Innovación y Tecnología -->
+        <!-- Header optimized for Reto 7 -->
         <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
             <div>
-                <h2>🤖 Asistente Virtual de Datos Abiertos Territorial</h2>
-                <small class="text-muted">Concurso Datos al Ecosistema 2026 | Categoría: IA Aplicada a Datos Abiertos</small>
+                <h2>📊 Simulador de Impacto Presupuestal</h2>
+                <small class="text-muted">Concurso Datos al Ecosistema 2026 | Simulación de Escenarios Urbano-Sociales</small>
             </div>
-            <span class="badge bg-primary px-3 py-2">Reto 7: Innovación y Tecnología Cumplido</span>
+            <!-- Dynamic header text updated for challenge identification -->
+            <span class="badge bg-success px-3 py-2 fs-6">Reto 7: Innovación y Tecnología</span>
         </div>
 
-        <!-- Metric Cards Summarizing Open Data Sets -->
+        <!-- Analytical summary cards -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card text-white bg-dark mb-3 shadow-sm">
                     <div class="card-body">
-                        <h6 class="card-title text-uppercase font-weight-bold text-info">Tecnología Emergente</h6>
-                        <p class="card-text fs-5">Random Forest Regressor y K-Means</p>
+                        <h6 class="card-title text-uppercase font-weight-bold text-info">Arquitectura de Modelado</h6>
+                        <p class="card-text fs-5">Pipeline: Random Forest & K-Means</p>
                     </div>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="card text-white bg-danger mb-3 shadow-sm">
                     <div class="card-body">
-                        <h6 class="card-title text-uppercase font-weight-bold text-warning">Zona de Mayor Demanda</h6>
+                        <h6 class="card-title text-uppercase font-weight-bold text-warning">Zona de Mayor Carga de Subsidios</h6>
                         <p class="card-text fs-5 fw-bold">{{ top_commune }}</p>
                     </div>
                 </div>
@@ -40,182 +51,333 @@
             <div class="col-md-4">
                 <div class="card text-white bg-success mb-3 shadow-sm">
                     <div class="card-body">
-                        <h6 class="card-title text-uppercase font-weight-bold">Apropiación Ciudadana</h6>
-                        <p class="card-text fs-5">Acceso democratizado a datos puros</p>
+                        <!-- Label updated to be much more understandable for the general audience -->
+                        <h6 class="card-title text-uppercase font-weight-bold">Bases de Datos Consultadas</h6>
+                        <p class="card-text fs-5">7 Datasets de datos.gov.co</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- CITIZEN INTERACTIVE ASSISTANT WINDOW -->
+        <!-- Simulation Control Panel -->
         <div class="row mb-5">
             <div class="col-md-12">
                 <div class="card border-primary shadow">
-                    <div class="card-header bg-primary text-white font-weight-bold fs-5 d-flex align-items-center">
-                        🔮 Consulta Interactiva al Asistente Virtual Predictivo
+                    <div class="card-header bg-primary text-white font-weight-bold fs-5">
+                        🔮 Panel de Simulación y Prescripción Presupuestal
                     </div>
                     <div class="card-body">
                         <p class="card-text text-secondary">
-                            <strong>¿Cómo funciona?</strong> Este asistente interactúa con un modelo predictivo entrenado con múltiples conjuntos de datos abiertos extraídos de <em>datos.gov.co</em>. Mueve los controles para simular las características de una comuna imaginaria y presiona el botón para que la IA estime la asignación presupuestal requerida para subsidios públicos combinados.
+                            Modifique las variables socio-demográficas para proyectar el comportamiento de la comuna. El modelo de IA calcula la demanda presupuestal estimada.
                         </p>
                         <hr>
-                        
-                        <form id="assistantForm" class="row g-4">
+                        <form id="simulatorForm" class="row g-4">
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">👥 Población en Régimen Subsidiado (Salud)</label>
+                                <label class="form-label fw-bold text-dark">👥 Afiliados Régimen Subsidiado</label>
                                 <input type="range" class="form-range" name="health_affiliates" min="0" max="100000" step="100" value="35000" oninput="this.nextElementSibling.value = Number(this.value).toLocaleString()">
                                 <output class="badge bg-secondary">35,000</output>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">💰 Inversión Pública Proyectada ($)</label>
+                                <label class="form-label fw-bold text-dark">💰 Inversión Pública ($)</label>
                                 <input type="range" class="form-range" name="investment" min="0" max="25000000000" step="50000000" value="4500000000" oninput="this.nextElementSibling.value = '$' + Number(this.value).toLocaleString()">
                                 <output class="badge bg-secondary">$4,500,000,000</output>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">🏠 Estrato Socioeconómico Promedio</label>
+                                <label class="form-label fw-bold text-dark">🏠 Estrato Socioeconómico</label>
                                 <input type="range" class="form-range" name="stratum" min="1" max="6" step="0.1" value="2.1" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">2.1</output>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">♿ Beneficiarios de Programas de Discapacidad</label>
+                                <label class="form-label fw-bold text-dark">♿ Discapacidad / Inclusión</label>
                                 <input type="range" class="form-range" name="disability_programs" min="0" max="1500" step="10" value="320" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">320</output>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">🎓 Estudiantes con Becas de Educación Superior</label>
+                                <label class="form-label fw-bold text-dark">🎓 Becas Educación Superior</label>
                                 <input type="range" class="form-range" name="scholarships" min="0" max="600" step="5" value="150" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">150</output>
                             </div>
-                            
                             <div class="col-md-4 d-flex align-items-center">
-                                <button type="button" onclick="queryVirtualAssistant()" class="btn btn-primary w-100 py-3 fw-bold shadow">
-                                    ⚡ Consultar al Asistente Virtual
+                                <button type="button" onclick="executePrescriptiveSimulation()" class="btn btn-primary w-100 py-3 fw-bold shadow">
+                                    ⚡ Ejecutar Simulación IA
                                 </button>
                             </div>
                         </form>
-
                         <div class="mt-4 p-3 bg-dark rounded d-flex justify-content-between align-items-center border-start border-warning border-5">
-                            <span class="fs-5 text-white mb-0 fw-bold">🤖 Respuesta de la IA — Demanda Presupuestal Calculada:</span>
-                            <span id="assistantResponse" class="fs-2 fw-bold text-warning">$ 0.00</span>
+                            <span class="fs-5 text-white mb-0 fw-bold">🤖 Demanda Presupuestal Estimada:</span>
+                            <span id="simulationResponse" class="fs-2 fw-bold text-warning">$ 0.00</span>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Visual Analytics Spectrum Row -->
+        <!-- Chart Grid Area -->
         <div class="row mb-5">
             <div class="col-md-7">
                 <div class="card p-3 shadow-sm h-100">
-                    <h5 class="card-title text-secondary">Distribución Real de Subsidios Combinados por Comuna ($)</h5>
-                    <canvas id="subsidiesChart"></canvas>
+                    <h5 class="card-title text-secondary mb-3">Subsidios Asignados por Comuna</h5>
+                    <div style="position: relative; height: 380px; width: 100%;">
+                        <canvas id="subsidiesChart"></canvas>
+                    </div>
                 </div>
             </div>
             <div class="col-md-5">
                 <div class="card p-3 shadow-sm h-100">
-                    <h5 class="card-title text-secondary">Análisis de Importancia del Modelo (Rigor IA)</h5>
-                    <canvas id="aiInsightsChart"></canvas>
+                    <h5 class="card-title text-secondary mb-3">Variables de Impacto en el Modelo</h5>
+
+                    <!-- Full-size chart canvas wrapper with zero left padding conflicts -->
+                    <div style="position: relative; height: 220px; width: 100%;">
+                        <canvas id="aiInsightsChart"></canvas>
+                    </div>
+
+                    <!-- Clean HTML-based legend container to fully fix the issue in image_643982.png -->
+                    <div class="mt-3 p-2 bg-light rounded border fs-7">
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="legend-dot" style="background-color: #ffc107;"></span>
+                            <small class="text-dark"><strong>Amarillo:</strong> Afiliados Régimen Subsidiado</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="legend-dot" style="background-color: #198754;"></span>
+                            <small class="text-dark"><strong>Verde:</strong> Inclusión Social y Discapacidad</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="legend-dot" style="background-color: #0d6efd;"></span>
+                            <small class="text-dark"><strong>Azul:</strong> Inversión Pública Ejecutada</small>
+                        </div>
+                        <div class="d-flex align-items-center mb-1">
+                            <span class="legend-dot" style="background-color: #dc3545;"></span>
+                            <small class="text-dark"><strong>Rojo:</strong> Estrato Socioeconómico Promedio</small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span class="legend-dot" style="background-color: #6f42c1;"></span>
+                            <small class="text-dark"><strong>Morado:</strong> Becas de Educación Superior</small>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
 
-        <!-- Consolidated Master Table View -->
+        <!-- Consolidated Data Table -->
         <div class="card shadow-sm">
             <div class="card-header bg-dark text-white font-weight-bold fs-5">
-                🎯 Matriz Maestra Consolidada — Datos de Entrada Abiertos
+                📌 Matriz Maestra de Variables por Territorio
             </div>
             <div class="table-responsive">
                 <table class="table table-hover table-striped mb-0 align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th>Nombre Territorial (Comuna)</th>
-                            <th class="text-center">Clúster de Vulnerabilidad</th>
+                            <th>Comuna</th>
+                            <th class="text-center">Vulnerabilidad</th>
                             <th class="text-center">Afiliados Salud</th>
-                            <th class="text-end">Inversión Asignada ($)</th>
-                            <th class="text-end">Subsidios Ejecutados ($)</th>
+                            <th class="text-end">Inversión ($)</th>
+                            <th class="text-end">Subsidios ($)</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for row in table_data %}
-                        <tr>
-                            <td class="fw-bold text-primary">{{ row.commune_clean }}</td>
-                            <td class="text-center">
-                                {% if row.vulnerability_cluster == 0 %}
-                                    <span class="badge bg-danger">Clúster Alto (0)</span>
-                                {% elif row.vulnerability_cluster == 1 %}
-                                    <span class="badge bg-warning text-dark">Clúster Medio (1)</span>
-                                {% else %}
-                                    <span class="badge bg-info text-dark">Clúster Bajo (2)</span>
-                                {% endif %}
-                            </td>
-                            <td class="text-center">{{ "{:,.0f}".format(row.total_subsidized_health_affiliates) }}</td>
-                            <td class="text-end text-muted">${{ "{:,.2f}".format(row.total_investment) }}</td>
-                            <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.total_combined_subsidies) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
+                    {% for row in table_data %}
+                    <tr>
+                        <td class="fw-bold text-primary">{{ row.commune_clean }}</td>
+                        <td class="text-center">
+                            {% if row.vulnerability_cluster == 0 %}
+                                <span class="badge bg-danger">Alto</span>
+                            {% elif row.vulnerability_cluster == 1 %}
+                                <span class="badge bg-warning text-dark">Medio</span>
+                            {% else %}
+                                <span class="badge bg-info text-dark">Bajo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">{{ "{:,.0f}".format(row.total_subsidized_health_affiliates) }}</td>
+                        <td class="text-end text-muted">${{ "{:,.2f}".format(row.total_investment) }}</td>
+                        <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.total_combined_subsidies) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- Frontend Core Scripts -->
+    <!-- Client-side controllers and chart renderers -->
     <script>
-        // --- ASYNC CITIZEN ASSISTANT ROUTING ---
-        function queryVirtualAssistant() {
-            const form = document.getElementById('assistantForm');
+        // Form simulation async post handler
+        function executePrescriptiveSimulation() {
+            const form = document.getElementById('simulatorForm');
             const formData = new FormData(form);
 
-            fetch('/assistant_query', {
-                method: 'POST',
-                body: formData
-            })
+            fetch('/simulate', { method: 'POST', body: formData })
             .then(response => response.json())
             .then(data => {
                 if(data.success) {
-                    const formatter = new Intl.NumberFormat('es-CO', {
-                        style: 'currency',
-                        currency: 'COP',
-                        minimumFractionDigits: 2
-                    });
-                    document.getElementById('assistantResponse').innerText = formatter.format(data.predicted_subsidies);
+                    const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 });
+                    document.getElementById('simulationResponse').innerText = formatter.format(data.predicted_subsidies);
                 } else {
-                    alert("Error consultando el asistente analítico: " + data.error);
+                    alert("Error en la simulación: " + data.error);
                 }
             })
-            .catch(err => console.error("Communication breakdown with the AI engine:", err));
+            .catch(err => console.error("API error:", err));
         }
 
-        // Render Open Data Subsidies Distribution Chart
+        // Left chart: Subsidies bar distribution
         const ctxSubsidies = document.getElementById('subsidiesChart').getContext('2d');
         new Chart(ctxSubsidies, {
             type: 'bar',
             data: {
                 labels: {{ chart_labels | tojson }},
                 datasets: [{
-                    label: 'Subsidios Combinados Totales ($)',
+                    label: 'Subsidios ($)',
                     data: {{ chart_subsidies | tojson }},
                     backgroundColor: 'rgba(13, 110, 253, 0.7)',
                     borderColor: 'rgba(13, 110, 253, 1)',
                     borderWidth: 1
                 }]
             },
-            options: { responsive: true }
+            options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // Render AI Model Feature Importance Spectrum
+        // Right chart: AI feature importance with full layout view
         const ctxAI = document.getElementById('aiInsightsChart').getContext('2d');
         new Chart(ctxAI, {
-            type: 'pie',
+            type: 'bar',
             data: {
-                labels: {{ ai_labels | tojson }},
+                // Empty labels on Y axis to allow the bar to capture 100% width without clipping issues
+                labels: ["", "", "", "", ""],
                 datasets: [{
                     data: {{ ai_values | tojson }},
-                    backgroundColor: ['#0d6efd', '#dc3545', '#ffc107', '#198754', '#6f42c1']
+                    backgroundColor: [
+                        '#ffc107',
+                        '#198754',
+                        '#0d6efd',
+                        '#dc3545',
+                        '#6f42c1'
+                    ],
+                    borderWidth: 0
                 }]
             },
-            options: { responsive: true }
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Peso Relativo en la Inferencia' }
+                    },
+                    y: {
+                        display: false // Turns off the Y scale axis completely to remove truncation bugs
+                    }
+                },
+                layout: {
+                    padding: { left: 5, right: 15, top: 10, bottom: 5 }
+                }
+            }
         });
     </script>
 </body>
+<!-- ===================================================================== -->
+<!-- CHATBOT CONVERSATIONAL INTERFACE WIDGET -->
+<!-- ===================================================================== -->
+
+<!-- Floating Button -->
+<button id="chatCircle" class="btn btn-primary rounded-circle shadow-lg position-fixed" style="bottom: 25px; right: 25px; width: 60px; height: 60px; z-index: 1050; display: flex; align-items: center; justify-content: center;">
+    <i class="bi bi-chat-dots-fill fs-3 text-white"></i>
+</button>
+
+<!-- Chat Window Box -->
+<div id="chatBox" class="card shadow-lg position-fixed d-none" style="bottom: 95px; right: 25px; width: 350px; height: 450px; z-index: 1050; border-radius: 12px; overflow: hidden;">
+    <!-- Header -->
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
+        <div class="d-flex align-items-center">
+            <div class="spinner-grow spinner-grow-sm text-light me-2" role="status"></div>
+            <strong class="mb-0">Asistente IA - Reto 7</strong>
+        </div>
+        <button id="closeChat" type="button" class="btn-close btn-close-white" aria-label="Close"></button>
+    </div>
+
+    <!-- Body Area for Message Logs -->
+    <div id="chatBody" class="card-body bg-light overflow-auto p-3" style="height: 320px; font-size: 0.9rem;">
+        <div class="text-start mb-2">
+            <div class="p-2 bg-white text-dark rounded shadow-sm d-inline-block" style="max-width: 85%;">
+                ¡Hola! Bienvenido al módulo conversacional del simulador presupuestal. Pregúntame sobre la variable más importante, promedios o los extremos por comunas.
+            </div>
+        </div>
+    </div>
+
+    <!-- Input Trigger Footer -->
+    <div class="card-footer bg-white p-2">
+        <form id="chatForm" class="d-flex">
+            <input id="chatInput" type="text" class="form-control form-control-sm me-2" placeholder="Escribe tu consulta aquí..." required autocomplete="off">
+            <button type="submit" class="btn btn-primary btn-sm px-3">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Icons Dependecy Injection (In case it's missing in your header) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<!-- Async Widget Animations & Communications Scripts -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const chatCircle = document.getElementById("chatCircle");
+    const chatBox = document.getElementById("chatBox");
+    const closeChat = document.getElementById("closeChat");
+    const chatForm = document.getElementById("chatForm");
+    const chatInput = document.getElementById("chatInput");
+    const chatBody = document.getElementById("chatBody");
+
+    // Toggle Chat visibility
+    chatCircle.addEventListener("click", () => chatBox.classList.remove("d-none"));
+    closeChat.addEventListener("click", () => chatBox.classList.add("d-none"));
+
+    // Handle form submissions asynchronously
+    chatForm.addEventListener("submit", function(e) {
+        e.preventDefault();
+        const text = chatInput.value.trim();
+        if(!text) return;
+
+        // Render user message bubble
+        appendMessage(text, "user");
+        chatInput.value = "";
+
+        // Push Async network query to Flask backend route
+        fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if(data.success) {
+                appendMessage(data.response, "bot");
+            } else {
+                appendMessage("Ocurrió un error procesando tu solicitud.", "bot");
+            }
+        })
+        .catch(() => {
+            appendMessage("No se pudo establecer conexión con el servidor.", "bot");
+        });
+    });
+
+    // Helper to dynamically attach structured chat bubbles
+    function appendMessage(msg, sender) {
+        const div = document.createElement("div");
+        div.className = sender === "user" ? "text-end mb-2" : "text-start mb-2";
+
+        const bubble = document.createElement("div");
+        bubble.className = sender === "user"
+            ? "p-2 bg-primary text-white rounded shadow-sm d-inline-block text-start"
+            : "p-2 bg-white text-dark rounded shadow-sm d-inline-block";
+        bubble.style.maxWidth = "85%";
+        bubble.innerHTML = msg.replace(/\n/g, "<br>"); // Formats breaks safely
+
+        div.appendChild(bubble);
+        chatBody.appendChild(div);
+        chatBody.scrollTop = chatBody.scrollHeight; // Auto-scrolls logs viewport
+    }
+});
+</script>
 </html>

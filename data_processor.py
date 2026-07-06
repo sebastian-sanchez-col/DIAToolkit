@@ -181,8 +181,11 @@ def process_and_create_master_matrix():
     df_investment_by_commune_and_district['commune_clean'] = df_investment_by_commune_and_district[
         'Nombre Comuna'].apply(clean_commune_name)
     df_social_inclusion_actions_for_people_with_disabilities['commune_clean'] = \
-    df_social_inclusion_actions_for_people_with_disabilities['COMUNA DE RESIDENCIA'].apply(clean_commune_name)
+        df_social_inclusion_actions_for_people_with_disabilities['COMUNA DE RESIDENCIA'].apply(clean_commune_name)
     df_scholarship['commune_clean'] = df_scholarship['MUNICIPIO DE RESIDENCIA'].apply(clean_commune_name)
+
+    df_epm_subsidies_contributions['commune_clean'] = df_epm_subsidies_contributions['municipio_o_sector'].apply(
+        clean_commune_name)
 
     if 'municipio_o_sector' in df_subsidy_and_cleaning.columns:
         df_subsidy_and_cleaning['commune_clean'] = df_subsidy_and_cleaning['municipio_o_sector'].apply(
@@ -251,48 +254,70 @@ def process_and_create_master_matrix():
     # 🛑 OPTIONAL CALL 2: Post-cleanup evaluation to verify zero nulls and zero duplicates
     # audit("DENTRO DE MATRIX - POST-LIMPIEZA")
 
-    print("Generando agregaciones por Comuna...")
+    print("Generando agregaciones por Comuna basándose en datos reales...")
+
+    # 1. Real geographic aggregations for explicit sources
     agg_investment = df_investment_by_commune_and_district.groupby('commune_clean').agg(
         total_investment=('Inversion', 'sum')).reset_index()
+
     agg_health = df_subsidized_health_regime_affiliates.groupby('commune_clean').agg(
-        total_subsidized_health_affiliates=('consecutivo', 'count'), mean_health_age=('edad', 'mean')).reset_index()
+        total_subsidized_health_affiliates=('consecutivo', 'count'),
+        mean_health_age=('edad', 'mean')).reset_index()
+
     agg_inclusion = df_social_inclusion_actions_for_people_with_disabilities.groupby('commune_clean').agg(
         total_disabled_and_inclusion_beneficiaries=('CONDICIÓN DE DISCAPACIDAD', 'count'),
         mean_inclusion_age=('AÑOS CUMPLIDOS AL INGRESO DEL PROGRAMA', 'mean')).reset_index()
+
     agg_scholarships = df_scholarship.groupby('commune_clean').agg(
         total_scholarship_beneficiaries=('CONVOCATORIA', 'count')).reset_index()
 
-    # Safe calculation of Municipal Global Totales
+    # 2. Extract real municipal global totals from unaggregated open data streams
+    # This captures the true total execution amounts from EPM and cleaning services
     total_health_affiliates_global = agg_health['total_subsidized_health_affiliates'].sum() + 1
     total_utility_val = df_utility_subsidy['valor'].sum()
-    mean_utility_strat = df_utility_subsidy['estrato'].mean()
     total_epm_contrib_val = df_epm_subsidies_contributions['valor'].sum()
     total_cleaning_val = df_subsidy_and_cleaning['total_subsidio'].sum()
     total_cleaning_subs = df_subsidy_and_cleaning['suscriptores_subsidiados'].sum()
+    estrato_global_referencia = df_utility_subsidy['estrato'].mean()
 
-    # Proportional Distribution of Public Utilities Based on Real Vulnerable Demographics
+    print(
+        "⚠️ NOTA METODOLÓGICA: Datasets de EPM/Aseo globales detectados. Aplicando Prorrateo por Densidad de Vulnerabilidad.")
+
+    # 3. Apply Demographic Transfer Matrix to distribute global funds based on real health density
+    # This resolves the zero-row bug while maintaining full data tracing for the ML model
     agg_utilities = agg_health[['commune_clean']].copy()
     agg_utilities['total_utility_subsidies'] = (
-                (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) * (
-                    total_utility_val + total_epm_contrib_val))
-    agg_utilities['mean_utility_stratum'] = mean_utility_strat
+            (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) *
+            (total_utility_val + total_epm_contrib_val)
+    )
+    agg_utilities['mean_utility_stratum'] = estrato_global_referencia
 
-    # Proportional Distribution of Cleaning Subsidy
     agg_cleaning = agg_health[['commune_clean']].copy()
-    agg_cleaning['total_cleaning_subsidies'] = ((agg_health[
-                                                     'total_subsidized_health_affiliates'] / total_health_affiliates_global) * total_cleaning_val)
-    agg_cleaning['total_subsidized_cleaning_subscribers'] = ((agg_health[
-                                                                  'total_subsidized_health_affiliates'] / total_health_affiliates_global) * total_cleaning_subs).astype(
-        int)
+    agg_cleaning['total_cleaning_subsidies'] = (
+            (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) *
+            total_cleaning_val
+    )
+    agg_cleaning['total_subsidized_cleaning_subscribers'] = (
+            (agg_health['total_subsidized_health_affiliates'] / total_health_affiliates_global) *
+            total_cleaning_subs
+    ).astype(int)
 
-    print("Consolidando Matriz Maestra Analítica (Data Mashup)...")
+    print("Consolidando Matriz Maestra Analítica (Data Mashup Híbrido)...")
 
-    # 5. Integration using Complete Geographic Universes (Left Joins on integrated base)
-    all_communes = pd.DataFrame(
-        {'commune_clean': list(set(agg_investment['commune_clean']) | set(agg_health['commune_clean']))})
-    all_communes = all_communes[all_communes['commune_clean'] != 'OTHER_ZONE']
+    # Official list of the 16 communes and 5 districts of Medellín to guarantee the geographic universe
+    medellin_territories = [
+        '01 - POPULAR', '02 - SANTA CRUZ', '03 - MANRIQUE', '04 - ARANJUEZ',
+        '05 - CASTILLA', '06 - DOCE DE OCTUBRE', '07 - ROBLEDO', '08 - VILLA HERMOSA',
+        '09 - BUENOS AIRES', '10 - LA CANDELARIA', '11 - LAURELES ESTADIO', '12 - LA AMERICA',
+        '13 - SAN JAVIER', '14 - EL POBLADO', '15 - GUAYABAL', '16 - BELEN',
+        '50 - SAN SEBASTIÁN DE PALMITAS', '60 - SAN CRISTÓBAL', '70 - ALTAVISTA',
+        '80 - SAN ANTONIO DE PRADO', '90 - SANTA ELENA'
+    ]
 
-    master_matrix = all_communes
+    # Create the matrix skeleton with only the official indexed territories
+    master_matrix = pd.DataFrame({'commune_clean': medellin_territories})
+
+    # Perform left joins to build the unified consolidated dataframe
     master_matrix = pd.merge(master_matrix, agg_investment, on='commune_clean', how='left')
     master_matrix = pd.merge(master_matrix, agg_utilities, on='commune_clean', how='left')
     master_matrix = pd.merge(master_matrix, agg_health, on='commune_clean', how='left')
@@ -300,8 +325,13 @@ def process_and_create_master_matrix():
     master_matrix = pd.merge(master_matrix, agg_scholarships, on='commune_clean', how='left')
     master_matrix = pd.merge(master_matrix, agg_cleaning, on='commune_clean', how='left')
 
+    # Fill any missing information with 0 safely
     master_matrix = master_matrix.fillna(0)
 
+    # Force reference stratum if left open by missing entries
+    master_matrix.loc[master_matrix['mean_utility_stratum'] == 0, 'mean_utility_stratum'] = estrato_global_referencia
+
+    # Final analytical indicators calculated over integrated data structure
     master_matrix['investment_per_capita_subsidized'] = (
             master_matrix['total_investment'] / (master_matrix['total_subsidized_health_affiliates'] + 1)
     )
