@@ -48,8 +48,8 @@ def index():
         "Año de la Inversión (Tendencia Temporal Multi-Año)",
     ]
     ai_values = [
-        float(ai_insights.get('total_subsidized_health_affiliates', 0)),
-        float(ai_insights.get('total_disabled_and_inclusion_beneficiaries', 0)),
+        float(ai_insights.get('health_affiliates_share', 0)),
+        float(ai_insights.get('inclusion_share', 0)),
         float(ai_insights.get('mean_utility_stratum', 0)),
         float(ai_insights.get('anio', 0)),
     ]
@@ -77,12 +77,15 @@ def simulate():
         disability_programs = float(request.form.get('disability_programs', 0))
         anio = float(request.form.get('anio', DEFAULT_SIMULATION_YEAR))
 
-        # We construct the DataFrame with the exact same order/column names as in
-        # training (MODEL_FEATURE_COLUMNS), to avoid relying on the estimator
-        # reordering by name.
+        total_health_reference = df_master['total_subsidized_health_affiliates'].sum()
+        total_inclusion_reference = df_master['total_disabled_and_inclusion_beneficiaries'].sum()
+
+        health_share = health_affiliates / total_health_reference if total_health_reference else 0
+        inclusion_share = disability_programs / total_inclusion_reference if total_inclusion_reference else 0
+
         row = {
-            'total_subsidized_health_affiliates': health_affiliates,
-            'total_disabled_and_inclusion_beneficiaries': disability_programs,
+            'health_affiliates_share': health_share,
+            'inclusion_share': inclusion_share,
             'mean_utility_stratum': stratum,
             'anio': anio,
         }
@@ -92,7 +95,6 @@ def simulate():
         return jsonify({'success': True, 'predicted_investment': float(prediction)})
     except Exception as error:
         return jsonify({'success': False, 'error': str(error)})
-
 @app.route('/chat', methods=['POST'])
 def chat():
     print("[HTTP POST] Petición del Chatbot recibida. Enrutando hacia módulo de NLP estadístico...")

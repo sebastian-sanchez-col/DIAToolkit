@@ -1,4 +1,5 @@
 # chatbot_nlp.py
+
 import numpy as np
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -52,14 +53,18 @@ classifier = LogisticRegression(C=1.0)
 classifier.fit(X_train_vec, y_train)
 
 FEATURE_TRANSLATION = {
-    'total_subsidized_health_affiliates': 'Densidad Demográfica Vulnerable (Régimen Subsidiado)',
-    'total_disabled_and_inclusion_beneficiaries': 'Vulnerabilidad Prioritaria (Inclusión Social)',
+    'health_affiliates_share': 'Densidad Demográfica Vulnerable (Participación Relativa, Régimen Subsidiado)',
+    'inclusion_share': 'Vulnerabilidad Prioritaria (Participación Relativa, Inclusión Social)',
     'total_investment': 'Presupuesto de Inversión Territorial Ejecutado',
     'mean_utility_stratum': 'Nivel de Capacidad Socioeconómica Promedio (Estrato Real)',
-    'total_scholarship_beneficiaries': 'Acceso a Educación Superior (Becas)',
+    # 🆕 'total_scholarship_beneficiaries' is NOT an actual model feature (it is not
+    # in MODEL_FEATURE_COLUMNS). It is kept here only in case the chatbot mentions
+    # this variable in free text; scholarships were excluded from the territorial
+    # analysis by commune due to insufficient coverage (N=33, see data_processor.py).
+    # Not to be confused with an active variable of the Random Forest.
+    'total_scholarship_beneficiaries': 'Acceso a Educación Superior (Becas) — Solo Métrica de Ciudad, No Territorial',
     'anio': 'Año de la Inversión (Tendencia Temporal Multi-Año)',
 }
-
 
 def obtener_respuesta_asistente(user_text, df_master, ai_insights, city_level_metrics):
     if not user_text or pd.isna(user_text):

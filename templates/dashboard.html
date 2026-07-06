@@ -101,18 +101,16 @@
 
         <!-- Área de Gráficos -->
         <div class="row mb-5">
-            <div class="col-md-7">
-                <div class="card p-3 shadow-sm h-100">
+            <div class="col-md-12">
+                <div class="card p-3 shadow-sm">
                     <h5 class="card-title text-secondary mb-3">Inversión Asignada por Comuna</h5>
                     <div style="position: relative; height: 380px; width: 100%;">
                         <canvas id="subsidiesChart"></canvas>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-5">
-                <div class="card p-3 shadow-sm h-100">
-                    <h5 class="card-title text-secondary mb-3">Variables de Impacto en el Modelo (Feature Importance)</h5>
 
+                    <hr class="my-4">
+
+                    <h5 class="card-title text-secondary mb-3">Variables de Impacto en el Modelo (Feature Importance)</h5>
                     <div style="position: relative; height: 220px; width: 100%;">
                         <canvas id="aiInsightsChart"></canvas>
                     </div>
@@ -131,6 +129,10 @@
                             <span class="legend-dot" style="background-color: #0d6efd;"></span>
                             <small class="text-dark"><strong>Azul:</strong> Nivel de Capacidad Socioeconómica Promedio (Estrato)</small>
                         </div>
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="legend-dot" style="background-color: #6f42c1;"></span>
+                            <small class="text-dark"><strong>Morado:</strong> Año de la Inversión (Tendencia Temporal Multi-Año)</small>
+                        </div>
                     </div>
                     <div class="mt-3 p-3 bg-white rounded border">
                         <h6 class="text-dark mb-2">ℹ️ ¿Qué significa cada variable?</h6>
@@ -142,23 +144,24 @@
                         <ul class="small text-secondary mb-0 ps-3">
                             <li class="mb-2">
                                 <strong class="text-dark">🟡 Densidad Demográfica Vulnerable (Régimen Subsidiado):</strong>
-                                número de personas afiliadas al régimen subsidiado de salud en la comuna,
-                                es decir, quienes no cotizan directamente y dependen del subsidio estatal
-                                para su aseguramiento. Entre más afiliados, mayor presión social sobre
-                                el territorio.
+                                participación relativa de la comuna en el total de personas afiliadas al régimen
+                                subsidiado de salud (frente a las demás comunas). Se usa como proporción y no
+                                como conteo absoluto, para no confundir "comuna con más gente" con "comuna más vulnerable".
                             </li>
                             <li class="mb-2">
                                 <strong class="text-dark">🟢 Vulnerabilidad Prioritaria (Acciones de Inclusión Social):</strong>
-                                número de beneficiarios registrados en programas de inclusión dirigidos
-                                a personas con discapacidad y sus cuidadores o familias. Refleja la carga
-                                de necesidades de atención prioritaria específica de cada comuna.
+                                participación relativa de la comuna en el total de beneficiarios registrados en
+                                programas de inclusión dirigidos a personas con discapacidad y sus cuidadores o familias.
                             </li>
-                            <li class="mb-0">
+                            <li class="mb-2">
                                 <strong class="text-dark">🔵 Nivel de Capacidad Socioeconómica Promedio (Estrato):</strong>
                                 estrato socioeconómico promedio de los suscriptores de servicios públicos
-                                en la comuna (escala oficial 1 a 6, donde 1 es el más bajo). Es la
-                                aproximación oficial colombiana al nivel de ingresos/capacidad de pago
-                                de los hogares.
+                                en la comuna (escala oficial 1 a 6, donde 1 es el más bajo).
+                            </li>
+                            <li class="mb-0">
+                                <strong class="text-dark">🟣 Año de la Inversión (Tendencia Temporal Multi-Año):</strong>
+                                captura si existe una tendencia de la inversión a lo largo del tiempo
+                                (2015-2018), independiente de las características demográficas de cada comuna.
                             </li>
                         </ul>
                     </div>
@@ -248,13 +251,14 @@
         new Chart(ctxAI, {
             type: 'bar',
             data: {
-                labels: ["", "", ""], // 3 variables de entrada mapeadas en X
+                labels: ["", "", "", ""],
                 datasets: [{
                     data: {{ ai_values | tojson }},
                     backgroundColor: [
                         '#ffc107', // Salud
                         '#198754', // Inclusión
-                        '#0d6efd'  // Estrato
+                        '#0d6efd', // Estrato
+                        '#6f42c1'  // Año
                     ],
                     borderWidth: 0
                 }]
