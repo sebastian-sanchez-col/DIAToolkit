@@ -16,7 +16,7 @@ def diagnostic_and_fix_zeros(df_analytics):
     for col in critical_cols:
         if df_analytics[col].sum() == 0:
             print(
-                f"[WARNING] Column '{col}' is entirely zero. Check string-to-numeric conversions or merging keys."
+                f"[ALERTA] La columna '{col}' está completamente en cero. Verifica las conversiones de texto a número o las llaves de cruce."
             )
     return df_analytics
 
@@ -42,7 +42,29 @@ def train_advanced_models(df_analytics):
 
     # Fit K-Means with 3 concrete target clusters
     kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
-    df_analytics["vulnerability_cluster"] = kmeans.fit_predict(scaled_data)
+    raw_clusters = kmeans.fit_predict(scaled_data)
+
+    # Dynamically sort clusters based on true centroid magnitudes
+    # We sum the raw centroids coordinates to establish a consistent mathematical ranking.
+    # Higher centroid coordinate sums indicate higher density of vulnerability factors.
+    centroid_sums = kmeans.cluster_centers_.sum(axis=1)
+
+    # Create a deterministic mapping array:
+    # argsort sorts from lowest to highest magnitude.
+    sorted_cluster_indices = np.argsort(centroid_sums)
+
+    # Invert mapping for user-facing alignment:
+    # 0 -> High Vulnerability (Highest centroid sum)
+    # 1 -> Medium Vulnerability
+    # 2 -> Low Vulnerability (Lowest centroid sum)
+    cluster_mapping = {
+        sorted_cluster_indices[2]: 0,  # Highest becomes 0 (Alto)
+        sorted_cluster_indices[1]: 1,  # Intermediate becomes 1 (Medio)
+        sorted_cluster_indices[0]: 2  # Lowest becomes 2 (Bajo)
+    }
+
+    # Map the arbitrary algorithm tags into consistent semantic categories
+    df_analytics["vulnerability_cluster"] = np.vectorize(cluster_mapping.get)(raw_clusters)
 
     # --- 2. PRESCRIPTIVE SCENARIO MODELING (RANDOM FOREST) ---
     # Isolate training features using the clean parameters passed into the pipeline
@@ -61,27 +83,16 @@ def train_advanced_models(df_analytics):
 
     print("Entrenando Modelo Prescriptivo de Escenarios Territoriales...")
 
-    # Add a controlled micro-noise based on investment and stratum to redistribute feature weights
-    # This prevents absolute linear correlation dominance and balances the visual feature importance
-    y_adjusted = y_raw * (
-        1
-        + 0.05 * np.sin(X["mean_utility_stratum"])
-        + 0.02 * (X["total_investment"] / (X["total_investment"].max() + 1))
-    )
-
-    # Initialize and train the Random Forest with strict depth control
+    # Enforcing data integrity by training strictly on the genuine target variable.
     rf_model = RandomForestRegressor(n_estimators=150, max_depth=5, random_state=42)
-    rf_model.fit(X, y_adjusted)
+    rf_model.fit(X, y_raw)
 
-    # Extract feature importances and enforce a mathematical floor so no bar is left at zero
-    raw_importances = rf_model.feature_importances_
-    smoothed_importances = (
-        raw_importances + 0.04
-    )
-    # Grants a baseline visibility floor to all attributes
-    normalized_importances = smoothed_importances / smoothed_importances.sum()
+    # Extracting pure mathematical feature importances straight from the split nodes.
+    pure_importances = rf_model.feature_importances_
 
-    # Build the dictionary that app.py reads via ai_insights
-    ai_insights = dict(zip(X.columns, normalized_importances))
+    # Build the dictionary that app.py reads via ai_insights using raw metrics
+    ai_insights = dict(zip(X.columns, pure_importances))
+
+    print("====================================================\n")
 
     return df_analytics, ai_insights, rf_model

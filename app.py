@@ -1,8 +1,11 @@
+# app.py
+
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
 import numpy as np
 from data_processor import process_and_create_master_matrix
 from model_trainer import train_advanced_models
+from chatbot_nlp import obtener_respuesta_asistente
 
 app = Flask(__name__)
 
@@ -98,84 +101,16 @@ def simulate():
 def chat():
     """
     Conversational interface routing engine.
-    Looks up live metadata inside the uncopied memory stream of df_master.
+    Delegates all classification and string interpolation tasks cleanly to the NLP class module.
     """
-    print("[HTTP POST] Petición del Chatbot recibida. Analizando patrones de intención...")
+    print("[HTTP POST] Petición del Chatbot recibida. Enrutando hacia módulo de NLP estadístico...")
     try:
-        user_message = request.json.get('message', '').lower().strip()
+        from chatbot_nlp import obtener_respuesta_asistente
 
-        # Calculate dynamic insights directly on top of the live un-burned dataframe streams
-        df_sorted = df_master.sort_values(by='total_combined_subsidies', ascending=False)
-        max_sub_row = df_sorted.iloc[0] if not df_sorted.empty else None
-        min_sub_row = df_sorted.iloc[-1] if not df_sorted.empty else None
-        avg_subsidies = df_master['total_combined_subsidies'].mean() if not df_master.empty else 0
+        user_message = request.json.get('message', '')
 
-        # Features map array matching the sequence inside the training matrix parameters
-        features_keys = [
-            'total_subsidized_health_affiliates',
-            'total_disabled_and_inclusion_beneficiaries',
-            'total_investment',
-            'mean_utility_stratum',
-            'total_scholarship_beneficiaries'
-        ]
-
-        # Dynamically lookup the dominant factor calculated by the loaded RandomForest instance
-        importance_scores = trained_rf.feature_importances_
-        max_idx = np.argmax(importance_scores)
-        dominant_feature = features_keys[max_idx]
-
-        feature_translation = {
-            'total_subsidized_health_affiliates': 'Densidad Demográfica Vulnerable (Régimen Subsidiado)',
-            'total_disabled_and_inclusion_beneficiaries': 'Vulnerabilidad Prioritaria (Inclusión Social)',
-            'total_investment': 'Presupuesto de Inversión Territorial Ejecutado',
-            'mean_utility_stratum': 'Nivel de Capacidad Socioeconómica Promedio (Estrato)',
-            'total_scholarship_beneficiaries': 'Acceso a Educación Superior (Becas)'
-        }
-        translated_feature = feature_translation.get(dominant_feature, dominant_feature)
-
-        # Localized chat logic loops handling contextual responses
-        if 'hola' in user_message or 'buenos' in user_message or 'tardes' in user_message:
-            bot_response = (
-                "¡Hola! Soy tu Asistente de IA para el Reto 7. Puedo ayudarte a analizar "
-                "la asignación de subsidios y el comportamiento del modelo predictivo en Medellín. "
-                "¿Qué te gustaría consultar hoy?"
-            )
-        elif 'comuna' in user_message or 'territorio' in user_message or 'mayor' in user_message or 'máximo' in user_message:
-            if max_sub_row is not None:
-                bot_response = (
-                    "Analizando la matriz territorial, la zona con **mayor asignación presupuestal** proyectada "
-                    f"es **{max_sub_row['commune_clean']}** con un monto estimado de "
-                    f"${max_sub_row['total_combined_subsidies']:,.2f} COP."
-                )
-            else:
-                bot_response = "Aún no se registran datos territoriales cargados."
-        elif 'menor' in user_message or 'mínimo' in user_message or 'corregimiento' in user_message:
-            if min_sub_row is not None:
-                bot_response = (
-                    "Consultando los registros históricos filtrados, la zona con **menor asignación** proyectada "
-                    f"corresponde a **{min_sub_row['commune_clean']}** con un monto estimado de "
-                    f"${min_sub_row['total_combined_subsidies']:,.2f} COP."
-                )
-            else:
-                bot_response = "Aún no se registran datos territoriales cargados."
-        elif 'variable' in user_message or 'importancia' in user_message or 'modelo' in user_message or 'ia' in user_message:
-            bot_response = (
-                "De acuerdo con las ganancias de información matemáticas de nuestro Random Forest Regressor, "
-                f"la variable con **mayor peso predictivo** en la ecuación actual es: **{translated_feature}**. "
-                "Ella es la encargada de guiar la mayor parte de las divisiones en los árboles de decisión."
-            )
-        elif 'promedio' in user_message or 'media' in user_message or 'total' in user_message:
-            bot_response = (
-                "Calculando métricas agregadas globales: El **presupuesto promedio proyectado** "
-                f"para las comunas y corregimientos analizados se sitúa en **${avg_subsidies:,.2f} COP**."
-            )
-        else:
-            bot_response = (
-                "Disculpa, no logré procesar esa consulta exacta. Intenta preguntándome algo como:\n"
-                "- *¿Cuál es la comuna con mayor presupuesto?*\n"
-                "- *¿Qué variable es la más importante para la IA?*\n"
-                "- *¿Cuál es el promedio de subsidios asignados?*"
-            )
+        # Pass variables positionally to eliminate keyword name collisions
+        bot_response = obtener_respuesta_asistente(user_message, df_master, trained_rf)
 
         return jsonify({'success': True, 'response': bot_response})
 
