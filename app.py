@@ -2,58 +2,56 @@
 
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
-import numpy as np
-from data_processor import process_and_create_master_matrix
+from data_processor import process_and_create_master_matrix, MODEL_FEATURE_COLUMNS
 from model_trainer import train_advanced_models
 from chatbot_nlp import obtener_respuesta_asistente
 
 app = Flask(__name__)
 
-
 def run_pipeline():
-    """
-    Triggers the full analytic data architecture sequence and captures the optimized ML model.
-    Loads real production information from data.gov.co directly into RAM memory.
-    """
     print("[INFO PIPELINE] Ejecutando rutinas de agregación de datos reales desde data_processor...")
-    raw_matrix = process_and_create_master_matrix()
+    # process_and_create_master_matrix() returns 3 values:
+    #   - raw_matrix (display, 1 row per commune, for dashboard/chatbot)
+    #   - city_level_metrics (aggregated only at city level)
+    #   - matrix_panel (1 row per commune x year, to train the model with higher N)
+    raw_matrix, city_level_metrics, matrix_panel = process_and_create_master_matrix()
 
     print("[INFO PIPELINE] Ajustando modelos avanzados de Machine Learning sobre métricas de producción...")
-    df_final, ai_insights, rf_model = train_advanced_models(raw_matrix)
+    df_final, ai_insights, rf_model = train_advanced_models(raw_matrix, matrix_panel)
 
     print("[ÉXITO PIPELINE] Asignación de memoria completa. Pipelines completamente unificados.")
-    return df_final, ai_insights, rf_model
+    return df_final, ai_insights, rf_model, city_level_metrics
 
 
-# Global startup execution: Data pipeline and model loading execute exactly once in RAM
-df_master, ai_insights, trained_rf = run_pipeline()
+df_master, ai_insights, trained_rf, city_level_metrics = run_pipeline()
+
+# Default year for the simulator: the next unobserved year in the data
+# (projection), or the latest available year if for some reason none exist.
+_available_years = city_level_metrics.get('investment_data_years', [])
+DEFAULT_SIMULATION_YEAR = (max(_available_years) + 1) if _available_years else 2024
+MIN_SIMULATION_YEAR = min(_available_years) if _available_years else DEFAULT_SIMULATION_YEAR
+MAX_SIMULATION_YEAR = DEFAULT_SIMULATION_YEAR
 
 
 @app.route('/')
 def index():
-    print("[HTTP GET] Cargando las vistas de datos del dashboard maestro...")
     table_data = df_master.to_dict(orient='records')
 
-    # Sort data streams in descending order so visual charts automatically sort from highest to lowest load
-    df_sorted = df_master.sort_values(by='total_combined_subsidies', ascending=False)
+    df_sorted = df_master.sort_values(by='total_investment', ascending=False)
     chart_labels = df_sorted['commune_clean'].tolist()
-    chart_subsidies = df_sorted['total_combined_subsidies'].tolist()
+    chart_investment = df_sorted['total_investment'].tolist()
 
-    # Structural labels and values mapped to target the exact UI Chart.js container
     ai_labels = [
         "Densidad Demográfica Vulnerable (Régimen Subsidiado)",
         "Vulnerabilidad Prioritaria (Acciones de Inclusión Social)",
-        "Presupuesto de Inversión Territorial Ejecutado (Medellín)",
         "Nivel de Capacidad Socioeconómica Promedio (Estrato)",
-        "Acceso a Educación Superior (Beneficiarios de Becas)"
+        "Año de la Inversión (Tendencia Temporal Multi-Año)",
     ]
-
     ai_values = [
         float(ai_insights.get('total_subsidized_health_affiliates', 0)),
         float(ai_insights.get('total_disabled_and_inclusion_beneficiaries', 0)),
-        float(ai_insights.get('total_investment', 0)),
         float(ai_insights.get('mean_utility_stratum', 0)),
-        float(ai_insights.get('total_scholarship_beneficiaries', 0))
+        float(ai_insights.get('anio', 0)),
     ]
 
     top_commune = df_sorted.iloc[0]['commune_clean'] if not df_sorted.empty else "No Detectada"
@@ -61,56 +59,49 @@ def index():
     return render_template('dashboard.html',
                            table_data=table_data,
                            chart_labels=chart_labels,
-                           chart_subsidies=chart_subsidies,
+                           chart_investment=chart_investment,
                            ai_labels=ai_labels,
                            ai_values=ai_values,
-                           top_commune=top_commune)
+                           top_commune=top_commune,
+                           city_level_metrics=city_level_metrics,
+                           min_simulation_year=MIN_SIMULATION_YEAR,
+                           max_simulation_year=MAX_SIMULATION_YEAR,
+                           default_simulation_year=DEFAULT_SIMULATION_YEAR)
 
 
 @app.route('/simulate', methods=['POST'])
 def simulate():
-    """API Endpoint that receives HTML form inputs and predicts via the globally unified AI model."""
-    print("[HTTP POST] Escenario de simulación recibido. Iniciando recálculo de inferencia...")
     try:
-        investment = float(request.form.get('investment', 0))
         stratum = float(request.form.get('stratum', 1))
         health_affiliates = float(request.form.get('health_affiliates', 0))
         disability_programs = float(request.form.get('disability_programs', 0))
-        scholarships = float(request.form.get('scholarships', 0))
+        anio = float(request.form.get('anio', DEFAULT_SIMULATION_YEAR))
 
-        # Build evaluation vector matching the EXACT structure and order trained inside model_trainer.py
-        input_data = pd.DataFrame([{
+        # We construct the DataFrame with the exact same order/column names as in
+        # training (MODEL_FEATURE_COLUMNS), to avoid relying on the estimator
+        # reordering by name.
+        row = {
             'total_subsidized_health_affiliates': health_affiliates,
             'total_disabled_and_inclusion_beneficiaries': disability_programs,
-            'total_investment': investment,
             'mean_utility_stratum': stratum,
-            'total_scholarship_beneficiaries': scholarships
-        }])
+            'anio': anio,
+        }
+        input_data = pd.DataFrame([row])[MODEL_FEATURE_COLUMNS]
 
         prediction = trained_rf.predict(input_data)[0]
-        print(f"[ÉXITO SIMULACIÓN] Valor estimado del escenario: ${prediction:,.2f} COP")
-
-        return jsonify({'success': True, 'predicted_subsidies': float(prediction)})
-
+        return jsonify({'success': True, 'predicted_investment': float(prediction)})
     except Exception as error:
-        print(f"[FALLO SIMULACIÓN] Ruptura operativa estructural: {str(error)}")
         return jsonify({'success': False, 'error': str(error)})
-
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    """
-    Conversational interface routing engine.
-    Delegates all classification and string interpolation tasks cleanly to the NLP class module.
-    """
     print("[HTTP POST] Petición del Chatbot recibida. Enrutando hacia módulo de NLP estadístico...")
     try:
-        from chatbot_nlp import obtener_respuesta_asistente
-
         user_message = request.json.get('message', '')
 
-        # Pass variables positionally to eliminate keyword name collisions
-        bot_response = obtener_respuesta_asistente(user_message, df_master, trained_rf)
+        bot_response = obtener_respuesta_asistente(
+            user_message, df_master, ai_insights, city_level_metrics
+        )
 
         return jsonify({'success': True, 'response': bot_response})
 

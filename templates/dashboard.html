@@ -7,7 +7,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        /* Custom indicator circles for the HTML legend */
         .legend-dot {
             height: 12px;
             width: 12px;
@@ -20,17 +19,16 @@
 <body class="bg-light">
 
     <div class="container my-5">
-        <!-- Header optimized for Reto 7 -->
+        <!-- Header optimizado para Reto 7 -->
         <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
             <div>
                 <h2>📊 Simulador de Impacto Presupuestal</h2>
                 <small class="text-muted">Concurso Datos al Ecosistema 2026 | Simulación de Escenarios Urbano-Sociales</small>
             </div>
-            <!-- Dynamic header text updated for challenge identification -->
             <span class="badge bg-success px-3 py-2 fs-6">Reto 7: Innovación y Tecnología</span>
         </div>
 
-        <!-- Analytical summary cards -->
+        <!-- Tarjetas de Resumen Analítico -->
         <div class="row mb-4">
             <div class="col-md-4">
                 <div class="card text-white bg-dark mb-3 shadow-sm">
@@ -43,7 +41,7 @@
             <div class="col-md-4">
                 <div class="card text-white bg-danger mb-3 shadow-sm">
                     <div class="card-body">
-                        <h6 class="card-title text-uppercase font-weight-bold text-warning">Zona de Mayor Carga de Subsidios</h6>
+                        <h6 class="card-title text-uppercase font-weight-bold text-warning">Zona de Mayor Carga de Inversión</h6>
                         <p class="card-text fs-5 fw-bold">{{ top_commune }}</p>
                     </div>
                 </div>
@@ -51,7 +49,6 @@
             <div class="col-md-4">
                 <div class="card text-white bg-success mb-3 shadow-sm">
                     <div class="card-body">
-                        <!-- Label updated to be much more understandable for the general audience -->
                         <h6 class="card-title text-uppercase font-weight-bold">Bases de Datos Consultadas</h6>
                         <p class="card-text fs-5">7 Datasets de datos.gov.co</p>
                     </div>
@@ -59,7 +56,7 @@
             </div>
         </div>
 
-        <!-- Simulation Control Panel -->
+        <!-- Panel de Control de Simulación -->
         <div class="row mb-5">
             <div class="col-md-12">
                 <div class="card border-primary shadow">
@@ -68,7 +65,7 @@
                     </div>
                     <div class="card-body">
                         <p class="card-text text-secondary">
-                            Modifique las variables socio-demográficas para proyectar el comportamiento de la comuna. El modelo de IA calcula la demanda presupuestal estimada.
+                            Modifique las variables socio-demográficas para proyectar el comportamiento de la comuna. El modelo de IA predictivo calcula la demanda presupuestal estimada en base al histórico real de Medellín.
                         </p>
                         <hr>
                         <form id="simulatorForm" class="row g-4">
@@ -78,33 +75,23 @@
                                 <output class="badge bg-secondary">35,000</output>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">💰 Inversión Pública ($)</label>
-                                <input type="range" class="form-range" name="investment" min="0" max="25000000000" step="50000000" value="4500000000" oninput="this.nextElementSibling.value = '$' + Number(this.value).toLocaleString()">
-                                <output class="badge bg-secondary">$4,500,000,000</output>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">🏠 Estrato Socioeconómico</label>
+                                <label class="form-label fw-bold text-dark">🏠 Estrato Socioeconómico Promedio</label>
                                 <input type="range" class="form-range" name="stratum" min="1" max="6" step="0.1" value="2.1" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">2.1</output>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">♿ Discapacidad / Inclusión</label>
+                                <label class="form-label fw-bold text-dark">♿ Beneficiarios Inclusión / Discapacidad</label>
                                 <input type="range" class="form-range" name="disability_programs" min="0" max="1500" step="10" value="320" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">320</output>
                             </div>
-                            <div class="col-md-4">
-                                <label class="form-label fw-bold text-dark">🎓 Becas Educación Superior</label>
-                                <input type="range" class="form-range" name="scholarships" min="0" max="600" step="5" value="150" oninput="this.nextElementSibling.value = this.value">
-                                <output class="badge bg-secondary">150</output>
-                            </div>
-                            <div class="col-md-4 d-flex align-items-center">
-                                <button type="button" onclick="executePrescriptiveSimulation()" class="btn btn-primary w-100 py-3 fw-bold shadow">
+                            <div class="col-md-12 d-flex justify-content-end">
+                                <button type="button" onclick="executePrescriptiveSimulation()" class="btn btn-primary px-5 py-3 fw-bold shadow">
                                     ⚡ Ejecutar Simulación IA
                                 </button>
                             </div>
                         </form>
                         <div class="mt-4 p-3 bg-dark rounded d-flex justify-content-between align-items-center border-start border-warning border-5">
-                            <span class="fs-5 text-white mb-0 fw-bold">🤖 Demanda Presupuestal Estimada:</span>
+                            <span class="fs-5 text-white mb-0 fw-bold">🤖 Asignación Presupuestal Estimada:</span>
                             <span id="simulationResponse" class="fs-2 fw-bold text-warning">$ 0.00</span>
                         </div>
                     </div>
@@ -112,11 +99,11 @@
             </div>
         </div>
 
-        <!-- Chart Grid Area -->
+        <!-- Área de Gráficos -->
         <div class="row mb-5">
             <div class="col-md-7">
                 <div class="card p-3 shadow-sm h-100">
-                    <h5 class="card-title text-secondary mb-3">Subsidios Asignados por Comuna</h5>
+                    <h5 class="card-title text-secondary mb-3">Inversión Asignada por Comuna</h5>
                     <div style="position: relative; height: 380px; width: 100%;">
                         <canvas id="subsidiesChart"></canvas>
                     </div>
@@ -124,42 +111,62 @@
             </div>
             <div class="col-md-5">
                 <div class="card p-3 shadow-sm h-100">
-                    <h5 class="card-title text-secondary mb-3">Variables de Impacto en el Modelo</h5>
+                    <h5 class="card-title text-secondary mb-3">Variables de Impacto en el Modelo (Feature Importance)</h5>
 
-                    <!-- Full-size chart canvas wrapper with zero left padding conflicts -->
                     <div style="position: relative; height: 220px; width: 100%;">
                         <canvas id="aiInsightsChart"></canvas>
                     </div>
 
-                    <!-- Clean HTML-based legend container to fully fix the issue in image_643982.png -->
+                    <!-- Leyenda HTML Limpia Sincronizada con el Backend -->
                     <div class="mt-3 p-2 bg-light rounded border fs-7">
-                        <div class="d-flex align-items-center mb-1">
+                        <div class="d-flex align-items-center mb-2">
                             <span class="legend-dot" style="background-color: #ffc107;"></span>
-                            <small class="text-dark"><strong>Amarillo:</strong> Afiliados Régimen Subsidiado</small>
+                            <small class="text-dark"><strong>Amarillo:</strong> Densidad Demográfica Vulnerable (Régimen Subsidiado)</small>
                         </div>
-                        <div class="d-flex align-items-center mb-1">
+                        <div class="d-flex align-items-center mb-2">
                             <span class="legend-dot" style="background-color: #198754;"></span>
-                            <small class="text-dark"><strong>Verde:</strong> Inclusión Social y Discapacidad</small>
+                            <small class="text-dark"><strong>Verde:</strong> Vulnerabilidad Prioritaria (Acciones de Inclusión Social)</small>
                         </div>
-                        <div class="d-flex align-items-center mb-1">
+                        <div class="d-flex align-items-center mb-2">
                             <span class="legend-dot" style="background-color: #0d6efd;"></span>
-                            <small class="text-dark"><strong>Azul:</strong> Inversión Pública Ejecutada</small>
-                        </div>
-                        <div class="d-flex align-items-center mb-1">
-                            <span class="legend-dot" style="background-color: #dc3545;"></span>
-                            <small class="text-dark"><strong>Rojo:</strong> Estrato Socioeconómico Promedio</small>
-                        </div>
-                        <div class="d-flex align-items-center">
-                            <span class="legend-dot" style="background-color: #6f42c1;"></span>
-                            <small class="text-dark"><strong>Morado:</strong> Becas de Educación Superior</small>
+                            <small class="text-dark"><strong>Azul:</strong> Nivel de Capacidad Socioeconómica Promedio (Estrato)</small>
                         </div>
                     </div>
-
+                    <div class="mt-3 p-3 bg-white rounded border">
+                        <h6 class="text-dark mb-2">ℹ️ ¿Qué significa cada variable?</h6>
+                        <p class="mb-2 small text-secondary">
+                            Este gráfico muestra cuánto pesa cada variable en las decisiones internas
+                            del modelo Random Forest al predecir la inversión territorial. Entre más
+                            larga la barra, mayor fue su influencia en el modelo.
+                        </p>
+                        <ul class="small text-secondary mb-0 ps-3">
+                            <li class="mb-2">
+                                <strong class="text-dark">🟡 Densidad Demográfica Vulnerable (Régimen Subsidiado):</strong>
+                                número de personas afiliadas al régimen subsidiado de salud en la comuna,
+                                es decir, quienes no cotizan directamente y dependen del subsidio estatal
+                                para su aseguramiento. Entre más afiliados, mayor presión social sobre
+                                el territorio.
+                            </li>
+                            <li class="mb-2">
+                                <strong class="text-dark">🟢 Vulnerabilidad Prioritaria (Acciones de Inclusión Social):</strong>
+                                número de beneficiarios registrados en programas de inclusión dirigidos
+                                a personas con discapacidad y sus cuidadores o familias. Refleja la carga
+                                de necesidades de atención prioritaria específica de cada comuna.
+                            </li>
+                            <li class="mb-0">
+                                <strong class="text-dark">🔵 Nivel de Capacidad Socioeconómica Promedio (Estrato):</strong>
+                                estrato socioeconómico promedio de los suscriptores de servicios públicos
+                                en la comuna (escala oficial 1 a 6, donde 1 es el más bajo). Es la
+                                aproximación oficial colombiana al nivel de ingresos/capacidad de pago
+                                de los hogares.
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Consolidated Data Table -->
+        <!-- Tabla de Datos Consolidada -->
         <div class="card shadow-sm">
             <div class="card-header bg-dark text-white font-weight-bold fs-5">
                 📌 Matriz Maestra de Variables por Territorio
@@ -168,11 +175,11 @@
                 <table class="table table-hover table-striped mb-0 align-middle">
                     <thead class="table-dark">
                         <tr>
-                            <th>Comuna</th>
-                            <th class="text-center">Vulnerabilidad</th>
-                            <th class="text-center">Afiliados Salud</th>
-                            <th class="text-end">Inversión ($)</th>
-                            <th class="text-end">Subsidios ($)</th>
+                            <th>Comuna / Corregimiento</th>
+                            <th class="text-center">Clúster Vulnerabilidad</th>
+                            <th class="text-center">Afiliados Salud (R.S.)</th>
+                            <th class="text-center">Estrato Promedio</th>
+                            <th class="text-end">Inversión Real ($)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -189,8 +196,8 @@
                             {% endif %}
                         </td>
                         <td class="text-center">{{ "{:,.0f}".format(row.total_subsidized_health_affiliates) }}</td>
-                        <td class="text-end text-muted">${{ "{:,.2f}".format(row.total_investment) }}</td>
-                        <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.total_combined_subsidies) }}</td>
+                        <td class="text-center">{{ "{:,.2f}".format(row.mean_utility_stratum) }}</td>
+                        <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.total_investment) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -199,9 +206,8 @@
         </div>
     </div>
 
-    <!-- Client-side controllers and chart renderers -->
+    <!-- Scripts Controladores -->
     <script>
-        // Form simulation async post handler
         function executePrescriptiveSimulation() {
             const form = document.getElementById('simulatorForm');
             const formData = new FormData(form);
@@ -211,7 +217,8 @@
             .then(data => {
                 if(data.success) {
                     const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 });
-                    document.getElementById('simulationResponse').innerText = formatter.format(data.predicted_subsidies);
+                    // CORRECCIÓN CLAVE: Leemos predicted_investment enviado desde app.py
+                    document.getElementById('simulationResponse').innerText = formatter.format(data.predicted_investment);
                 } else {
                     alert("Error en la simulación: " + data.error);
                 }
@@ -219,15 +226,15 @@
             .catch(err => console.error("API error:", err));
         }
 
-        // Left chart: Subsidies bar distribution
+        // Gráfico Izquierdo: Inversión por Comuna
         const ctxSubsidies = document.getElementById('subsidiesChart').getContext('2d');
         new Chart(ctxSubsidies, {
             type: 'bar',
             data: {
                 labels: {{ chart_labels | tojson }},
                 datasets: [{
-                    label: 'Subsidios ($)',
-                    data: {{ chart_subsidies | tojson }},
+                    label: 'Inversión Asignada ($)',
+                    data: {{ chart_investment | tojson }},
                     backgroundColor: 'rgba(13, 110, 253, 0.7)',
                     borderColor: 'rgba(13, 110, 253, 1)',
                     borderWidth: 1
@@ -236,21 +243,18 @@
             options: { responsive: true, maintainAspectRatio: false }
         });
 
-        // Right chart: AI feature importance with full layout view
+        // Gráfico Derecho: Importancia de Variables en la IA (3 Características reales)
         const ctxAI = document.getElementById('aiInsightsChart').getContext('2d');
         new Chart(ctxAI, {
             type: 'bar',
             data: {
-                // Empty labels on Y axis to allow the bar to capture 100% width without clipping issues
-                labels: ["", "", "", "", ""],
+                labels: ["", "", ""], // 3 variables de entrada mapeadas en X
                 datasets: [{
                     data: {{ ai_values | tojson }},
                     backgroundColor: [
-                        '#ffc107',
-                        '#198754',
-                        '#0d6efd',
-                        '#dc3545',
-                        '#6f42c1'
+                        '#ffc107', // Salud
+                        '#198754', // Inclusión
+                        '#0d6efd'  // Estrato
                     ],
                     borderWidth: 0
                 }]
@@ -265,9 +269,7 @@
                         beginAtZero: true,
                         title: { display: true, text: 'Peso Relativo en la Inferencia' }
                     },
-                    y: {
-                        display: false // Turns off the Y scale axis completely to remove truncation bugs
-                    }
+                    y: { display: false }
                 },
                 layout: {
                     padding: { left: 5, right: 15, top: 10, bottom: 5 }
@@ -276,18 +278,13 @@
         });
     </script>
 </body>
-<!-- ===================================================================== -->
-<!-- CHATBOT CONVERSATIONAL INTERFACE WIDGET -->
-<!-- ===================================================================== -->
 
-<!-- Floating Button -->
+<!-- Widget Conversacional del Chatbot -->
 <button id="chatCircle" class="btn btn-primary rounded-circle shadow-lg position-fixed" style="bottom: 25px; right: 25px; width: 60px; height: 60px; z-index: 1050; display: flex; align-items: center; justify-content: center;">
     <i class="bi bi-chat-dots-fill fs-3 text-white"></i>
 </button>
 
-<!-- Chat Window Box -->
 <div id="chatBox" class="card shadow-lg position-fixed d-none" style="bottom: 95px; right: 25px; width: 350px; height: 450px; z-index: 1050; border-radius: 12px; overflow: hidden;">
-    <!-- Header -->
     <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-3">
         <div class="d-flex align-items-center">
             <div class="spinner-grow spinner-grow-sm text-light me-2" role="status"></div>
@@ -296,7 +293,6 @@
         <button id="closeChat" type="button" class="btn-close btn-close-white" aria-label="Close"></button>
     </div>
 
-    <!-- Body Area for Message Logs -->
     <div id="chatBody" class="card-body bg-light overflow-auto p-3" style="height: 320px; font-size: 0.9rem;">
         <div class="text-start mb-2">
             <div class="p-2 bg-white text-dark rounded shadow-sm d-inline-block" style="max-width: 85%;">
@@ -305,7 +301,6 @@
         </div>
     </div>
 
-    <!-- Input Trigger Footer -->
     <div class="card-footer bg-white p-2">
         <form id="chatForm" class="d-flex">
             <input id="chatInput" type="text" class="form-control form-control-sm me-2" placeholder="Escribe tu consulta aquí..." required autocomplete="off">
@@ -316,10 +311,8 @@
     </div>
 </div>
 
-<!-- Icons Dependecy Injection (In case it's missing in your header) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
-<!-- Async Widget Animations & Communications Scripts -->
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const chatCircle = document.getElementById("chatCircle");
@@ -329,21 +322,17 @@ document.addEventListener("DOMContentLoaded", function() {
     const chatInput = document.getElementById("chatInput");
     const chatBody = document.getElementById("chatBody");
 
-    // Toggle Chat visibility
     chatCircle.addEventListener("click", () => chatBox.classList.remove("d-none"));
     closeChat.addEventListener("click", () => chatBox.classList.add("d-none"));
 
-    // Handle form submissions asynchronously
     chatForm.addEventListener("submit", function(e) {
         e.preventDefault();
         const text = chatInput.value.trim();
         if(!text) return;
 
-        // Render user message bubble
         appendMessage(text, "user");
         chatInput.value = "";
 
-        // Push Async network query to Flask backend route
         fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -362,7 +351,6 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     });
 
-    // Helper to dynamically attach structured chat bubbles
     function appendMessage(msg, sender) {
         const div = document.createElement("div");
         div.className = sender === "user" ? "text-end mb-2" : "text-start mb-2";
@@ -372,11 +360,11 @@ document.addEventListener("DOMContentLoaded", function() {
             ? "p-2 bg-primary text-white rounded shadow-sm d-inline-block text-start"
             : "p-2 bg-white text-dark rounded shadow-sm d-inline-block";
         bubble.style.maxWidth = "85%";
-        bubble.innerHTML = msg.replace(/\n/g, "<br>"); // Formats breaks safely
+        bubble.innerHTML = msg.replace(/\n/g, "<br>");
 
         div.appendChild(bubble);
         chatBody.appendChild(div);
-        chatBody.scrollTop = chatBody.scrollHeight; // Auto-scrolls logs viewport
+        chatBody.scrollTop = chatBody.scrollHeight;
     }
 });
 </script>

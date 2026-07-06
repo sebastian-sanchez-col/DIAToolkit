@@ -4,9 +4,6 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
-# =====================================================================
-# 1. TRAINING CORPUS (Differentiated intents for Stratum and Averages)
-# =====================================================================
 TRAINING_DATA = {
     "saludo": [
         "hola", "buenos dias", "buenas tardes", "hey", "saludos",
@@ -40,9 +37,6 @@ TRAINING_DATA = {
     ]
 }
 
-# =====================================================================
-# 2. NLP STATISTICAL TRAINING ENGINE
-# =====================================================================
 X_train = []
 y_train = []
 
@@ -57,77 +51,73 @@ X_train_vec = vectorizer.fit_transform(X_train)
 classifier = LogisticRegression(C=1.0)
 classifier.fit(X_train_vec, y_train)
 
+FEATURE_TRANSLATION = {
+    'total_subsidized_health_affiliates': 'Densidad Demográfica Vulnerable (Régimen Subsidiado)',
+    'total_disabled_and_inclusion_beneficiaries': 'Vulnerabilidad Prioritaria (Inclusión Social)',
+    'total_investment': 'Presupuesto de Inversión Territorial Ejecutado',
+    'mean_utility_stratum': 'Nivel de Capacidad Socioeconómica Promedio (Estrato Real)',
+    'total_scholarship_beneficiaries': 'Acceso a Educación Superior (Becas)',
+    'anio': 'Año de la Inversión (Tendencia Temporal Multi-Año)',
+}
 
-# =====================================================================
-# 3. PUBLIC INTERACTION INTERFACE
-# =====================================================================
-def obtener_respuesta_asistente(texto_usuario, df_master, trained_rf):
-    """
-    Processes raw user text using TF-IDF and maps it probabilistically to an
-    intent, dynamically generating responses based on the live master dataframe state.
-    """
-    if not texto_usuario or pd.isna(texto_usuario):
+
+def obtener_respuesta_asistente(user_text, df_master, ai_insights, city_level_metrics):
+    if not user_text or pd.isna(user_text):
         return "Por favor, escribe una pregunta para poder ayudarte."
 
-    entrada_limpia = str(texto_usuario).lower().strip()
-    texto_vec = vectorizer.transform([entrada_limpia])
+    clean_input = str(user_text).lower().strip()
+    text_vec = vectorizer.transform([clean_input])
 
-    probabilidades = classifier.predict_proba(texto_vec)[0]
-    max_idx_intent = np.argmax(probabilidades)
-    confianza = probabilidades[max_idx_intent]
-    intent_predicho = classifier.classes_[max_idx_intent]
+    probabilities = classifier.predict_proba(text_vec)[0]
+    max_intent_idx = np.argmax(probabilities)
+    confidence = probabilities[max_intent_idx]
+    predicted_intent = classifier.classes_[max_intent_idx]
 
-    if confianza < 0.35:
-        intent_predicho = "desconocido"
+    if confidence < 0.35:
+        predicted_intent = "desconocido"
 
-    # Dynamic calculation over the live dataframe streams
-    df_sorted = df_master.sort_values(by='total_combined_subsidies', ascending=False)
-    max_sub_row = df_sorted.iloc[0] if not df_sorted.empty else None
-    min_sub_row = df_sorted.iloc[-1] if not df_sorted.empty else None
-    avg_subsidies = df_master['total_combined_subsidies'].mean() if not df_master.empty else 0
+    df_sorted = df_master.sort_values(by='total_investment', ascending=False)
+    max_inv_row = df_sorted.iloc[0] if not df_sorted.empty else None
+    min_inv_row = df_sorted.iloc[-1] if not df_sorted.empty else None
+    avg_investment = df_master['total_investment'].mean() if not df_master.empty else 0
 
-    # Stratum metrics calculation for accurate response
     avg_stratum = df_master['mean_utility_stratum'].mean() if not df_master.empty else 0
     df_stratum_sorted = df_master.sort_values(by='mean_utility_stratum', ascending=True)
     lowest_stratum_zone = df_stratum_sorted.iloc[0]['commune_clean'] if not df_stratum_sorted.empty else "N/A"
 
-    # Extract dynamic feature importances from Random Forest
-    features_keys = [
-        'total_subsidized_health_affiliates',
-        'total_disabled_and_inclusion_beneficiaries',
-        'total_investment',
-        'mean_utility_stratum',
-        'total_scholarship_beneficiaries'
-    ]
-    importance_scores = trained_rf.feature_importances_
-    max_feat_idx = np.argmax(importance_scores)
-    dominant_feature = features_keys[max_feat_idx]
+    total_subsidies_city = (
+        city_level_metrics.get('total_epm_utility_subsidy_medellin', 0)
+        + city_level_metrics.get('total_epm_direct_subsidy_medellin', 0)
+        + city_level_metrics.get('total_cleaning_subsidy_medellin', 0)
+    )
 
-    feature_translation = {
-        'total_subsidized_health_affiliates': 'Densidad Demográfica Vulnerable (Régimen Subsidiado)',
-        'total_disabled_and_inclusion_beneficiaries': 'Vulnerabilidad Prioritaria (Inclusión Social)',
-        'total_investment': 'Presupuesto de Inversión Territorial Ejecutado',
-        'mean_utility_stratum': 'Nivel de Capacidad Socioeconómica Promedio (Estrato Real)',
-        'total_scholarship_beneficiaries': 'Acceso a Educación Superior (Becas)'
-    }
-    translated_feature = feature_translation.get(dominant_feature, dominant_feature)
+    if ai_insights:
+        dominant_feature = max(ai_insights, key=ai_insights.get)
+    else:
+        dominant_feature = None
+    translated_feature = FEATURE_TRANSLATION.get(dominant_feature, dominant_feature or "N/A")
 
-    # Dictionary mapping for dynamic generation of response payloads
-    respuestas = {
+    responses = {
         "saludo": (
             "¡Hola! Soy tu Asistente de IA para el Reto 7, optimizado con un motor de NLP "
-            "estadístico. Puedo ayudarte a analizar la asignación de subsidios y el "
-            "comportamiento de nuestro modelo predictivo. ¿Qué te gustaría consultar hoy?"
+            "estadístico. Puedo ayudarte a analizar la inversión territorial, los subsidios "
+            "de la ciudad y el comportamiento de nuestro modelo predictivo. ¿Qué te gustaría "
+            "consultar hoy?"
         ),
         "inversion": (
-            f"Analizando la matriz territorial, la zona con **mayor asignación presupuestal** proyectada "
-            f"es **{max_sub_row['commune_clean']}** con un monto estimado de ${max_sub_row['total_combined_subsidies']:,.2f} COP."
-            if max_sub_row is not None else "Aún no se registran datos territoriales cargados."
+            f"Analizando la matriz territorial, la zona con **mayor inversión real ejecutada** "
+            f"es **{max_inv_row['commune_clean']}** con un monto estimado de "
+            f"${max_inv_row['total_investment']:,.2f} COP."
+            if max_inv_row is not None else "Aún no se registran datos territoriales cargados."
         ),
         "subsidios": (
-            f"Consultando los registros históricos filtrados, la zona con **menor asignación** proyectada "
-            f"corresponde a **{min_sub_row['commune_clean']}** con un monto estimado de ${min_sub_row['total_combined_subsidies']:,.2f} COP."
-            if min_sub_row is not None else "Aún no se registran datos territoriales cargados."
+            f"Los subsidios (EPM servicios públicos, EPM directos y aseo) están reportados a "
+            f"nivel de todo el municipio de Medellín, no por comuna individual, ya que las "
+            f"fuentes originales no incluyen esa llave geográfica. El **total combinado de "
+            f"subsidios de la ciudad** es de **${total_subsidies_city:,.2f} COP**. "
+            f"Adicionalmente, la comuna con **menor inversión territorial** registrada es "
+            f"**{min_inv_row['commune_clean']}** con ${min_inv_row['total_investment']:,.2f} COP."
+            if min_inv_row is not None else "Aún no se registran datos territoriales cargados."
         ),
         "estrato": (
             f"Métricas de Estratificación Socioeconómica: El **estrato promedio ponderado** global "
@@ -135,20 +125,22 @@ def obtener_respuesta_asistente(texto_usuario, df_master, trained_rf):
             f"socioeconómico más bajo registrado es **{lowest_stratum_zone}**."
         ),
         "promedio": (
-            f"Calculando métricas agregadas globales: El **presupuesto de subsidio combinado promedio** "
-            f"para las comunas y corregimientos analizados se sitúa en **${avg_subsidies:,.2f} COP**."
+            f"Calculando métricas agregadas: la **inversión territorial promedio** por comuna/"
+            f"corregimiento es de **${avg_investment:,.2f} COP**. A nivel de ciudad, el subsidio "
+            f"combinado total (EPM + aseo) asciende a **${total_subsidies_city:,.2f} COP**."
         ),
         "modelo_ml": (
-            "De acuerdo con las ganancias de información matemáticas de nuestro Random Forest Regressor, "
-            f"la variable con **mayor peso predictivo** en la ecuación actual es: **{translated_feature}**. "
-            "Ella es la encargada de guiar la mayor parte de las divisiones en los árboles de decisión."
+            "De acuerdo con las ganancias de información matemáticas de nuestro Random Forest "
+            f"Regressor, la variable con **mayor peso predictivo** en la ecuación actual es: "
+            f"**{translated_feature}**. Ella es la encargada de guiar la mayor parte de las "
+            "divisiones en los árboles de decisión."
         ),
         "desconocido": (
             "Disculpa, no logré procesar esa consulta exacta con el modelo NLP. Intenta preguntándome algo como:\n"
             "- *¿Cuál es el estrato promedio de las comunas?*\n"
-            "- *¿Cuál es la comuna con mayor presupuesto?*\n"
+            "- *¿Cuál es la comuna con mayor inversión?*\n"
             "- *¿Qué variable es la más importante para la IA?*"
         )
     }
 
-    return respuestas[intent_predicho]
+    return responses[predicted_intent]
