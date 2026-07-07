@@ -9,12 +9,6 @@ import pandas as pd
 # Configuration constants
 # ---------------------------------------------------------------------------
 
-INVESTMENT_UNIT_MULTIPLIER_BY_YEAR = {
-    2015: 1_000_000,
-    2016: 1_000_000,
-    2017: 1_000_000,
-    2018: 1_000_000,
-}
 INVESTMENT_UNIT_MULTIPLIER_DEFAULT = 1_000_000
 
 CLEANING_COLUMN_CANDIDATES = [
@@ -43,8 +37,18 @@ MODEL_FEATURE_COLUMNS = [
     "health_affiliates_share",
     "inclusion_share",
     "mean_utility_stratum",
-    "anio"
+    "year"
 ]
+
+# Human-readable Spanish labels for each model feature. Centralized here so
+# that the dashboard (app.py) and the chatbot (chatbot_nlp.py) always describe the
+# same variable using exactly the same phrasing.
+FEATURE_TRANSLATION = {
+    'health_affiliates_share': 'Densidad Demográfica Vulnerable (Participación Relativa, Régimen Subsidiado)',
+    'inclusion_share': 'Vulnerabilidad Prioritaria (Participación Relativa, Inclusión Social)',
+    'mean_utility_stratum': 'Nivel de Capacidad Socioeconómica Promedio (Estrato Real)',
+    'year': 'Año de la Inversión (Tendencia Temporal Multi-Año)',
+}
 
 STRATUM_CATEGORY_TO_NUMBER = {
     'BAJO-BAJO': 1,
@@ -381,6 +385,41 @@ def diagnostic_outlier_check(df, column_name, label_for_log, id_columns=None, to
                   f"antes de confiar en el total agregado.")
 
 
+def diagnostic_check_duplicate_subsidy_sources(df_utility_subsidy, df_epm_subsidies_contributions):
+    """
+    Compares 'EPM servicios' and 'EPM directos' at the row level (not just
+    their aggregate sum) to detect whether they are the same underlying
+    dataset republished under two different catalog entries on datos.gov.co.
+
+    Matching only the aggregate sum is a weak signal (different individual
+    values could coincidentally add up to the same total). Matching the full
+    sorted array of individual 'valor' values is a near-definitive signal:
+    two independent subsidy programs matching on every single value is
+    statistically implausible. This was independently corroborated against
+    the datos.gov.co catalog entries for both resources, which describe the
+    same content (EPM subsidies for Energía/Gas/Acueducto y Alcantarillado in
+    Antioquia) and share the same column dictionary ('a_o', 'mes', 'valor').
+    """
+    utility_values = sorted(df_utility_subsidy['valor'].round(2).tolist())
+    epm_direct_values = sorted(df_epm_subsidies_contributions['valor'].round(2).tolist())
+
+    same_length = len(utility_values) == len(epm_direct_values)
+    confirmed_duplicate = same_length and utility_values == epm_direct_values
+
+    if confirmed_duplicate:
+        print(f"[DUPLICADO CONFIRMADO] 'EPM servicios' y 'EPM directos' tienen exactamente los mismos "
+              f"{len(utility_values)} valores individuales (no solo la misma suma), y sus fichas en "
+              f"datos.gov.co describen el mismo contenido con el mismo diccionario de columnas. Se "
+              f"excluye 'EPM directos' de cualquier total combinado de ciudad para no contar el mismo "
+              f"subsidio dos veces.")
+    elif not same_length:
+        print(f"[DIAGNÓSTICO EPM] 'EPM servicios' ({len(utility_values)} filas) y 'EPM directos' "
+              f"({len(epm_direct_values)} filas) tienen distinto número de filas tras la limpieza; "
+              f"no aplica la comparación de duplicado exacto.")
+
+    return confirmed_duplicate
+
+
 def diagnostic_correlation_check(df_analytics, label_for_log="Panel"):
     """Evaluates correlations of key variables against the core investment metric.
 
@@ -548,14 +587,13 @@ def load_investment_year(path, year):
     df['commune_clean'] = df[name_col].apply(clean_commune_name)
     diagnostic_unmatched_communes(df, name_col, f'Inversión por comuna {year}')
 
-    multiplier = INVESTMENT_UNIT_MULTIPLIER_BY_YEAR.get(year, INVESTMENT_UNIT_MULTIPLIER_DEFAULT)
-    df['Inversion'] = robust_numeric_clean(df[value_col]) * multiplier
-    df['anio'] = year
+    df['investment_value'] = robust_numeric_clean(df[value_col]) * INVESTMENT_UNIT_MULTIPLIER_DEFAULT
+    df['year'] = year
 
     print(f"[CARGA INVERSIÓN {year}] '{path}': {len(df)} filas cargadas "
           f"(columna comuna='{name_col}', columna valor='{value_col}').")
 
-    return df[['commune_clean', 'Inversion', 'anio']]
+    return df[['commune_clean', 'investment_value', 'year']]
 
 
 def load_investment_multiyear():
@@ -571,7 +609,7 @@ def load_investment_multiyear():
                             "Revisa las rutas en INVESTMENT_FILES_BY_YEAR.")
 
     df_investment_multiyear = pd.concat(yearly_dataframes, ignore_index=True)
-    available_years = sorted(df_investment_multiyear['anio'].unique().tolist())
+    available_years = sorted(df_investment_multiyear['year'].unique().tolist())
     print(f"[INVERSIÓN MULTI-AÑO] Años cargados exitosamente: {available_years}")
     return df_investment_multiyear, available_years
 
@@ -709,9 +747,18 @@ def _dedupe_city_subsidies_by_period(df_subsidy_and_cleaning, df_utility_subsidy
             cleaning_period_info, utility_period_info, epm_direct_period_info)
 
 
-def _check_subsidies_temporal_alignment(cleaning_period_info, utility_period_info, epm_direct_period_info):
-    """Checks whether the three city-level subsidies measure comparable time windows."""
-    period_infos = [cleaning_period_info, utility_period_info, epm_direct_period_info]
+def _check_subsidies_temporal_alignment(cleaning_period_info, utility_period_info, epm_direct_period_info,
+                                         exclude_epm_direct):
+    """Checks whether the city-level subsidies still in use measure comparable time windows.
+
+    When 'EPM directos' is a confirmed duplicate of 'EPM servicios', it is
+    excluded from this comparison — otherwise a duplicated source would
+    count twice towards the alignment check.
+    """
+    period_infos = [cleaning_period_info, utility_period_info]
+    if not exclude_epm_direct:
+        period_infos.append(epm_direct_period_info)
+
     available_period_max = [info.get('period_max') for info in period_infos if info]
 
     if len(available_period_max) >= 2:
@@ -719,20 +766,22 @@ def _check_subsidies_temporal_alignment(cleaning_period_info, utility_period_inf
         periods_aligned = max_diff_days <= 31
     else:
         max_diff_days = None
-        periods_aligned = None  # cannot be verified (missing period info in some dataset)
+        periods_aligned = None
 
     if periods_aligned is False:
-        print(f"[ALERTA HOMOGENEIDAD TEMPORAL] Los tres subsidios de ciudad (aseo, EPM servicios, EPM "
-              f"directos) NO corresponden al mismo periodo (diferencia máxima entre periodos más "
-              f"recientes: {max_diff_days} días). Sumarlos como 'subsidio combinado de "
-              f"ciudad' no es correcto todavía; homogeneizar la ventana temporal antes de presentarlo.")
+        sources_desc = "aseo y EPM servicios" if exclude_epm_direct else "aseo, EPM servicios y EPM directos"
+        print(f"[ALERTA HOMOGENEIDAD TEMPORAL] Los subsidios de ciudad ({sources_desc}) NO corresponden "
+              f"al mismo periodo (diferencia máxima: {max_diff_days} días). Sumarlos como 'subsidio "
+              f"combinado de ciudad' no es correcto todavía; homogeneizar la ventana temporal antes de "
+              f"presentarlo.")
     elif periods_aligned is None:
-        print("[ALERTA HOMOGENEIDAD TEMPORAL] No se pudo verificar si los tres subsidios de ciudad miden "
-              "el mismo periodo (al menos uno de los datasets no tiene columna de periodo/fecha "
+        print("[ALERTA HOMOGENEIDAD TEMPORAL] No se pudo verificar si los subsidios de ciudad miden el "
+              "mismo periodo (al menos uno de los datasets no tiene columna de periodo/fecha "
               "reconocible). Tratar el 'subsidio combinado de ciudad' con cautela.")
     else:
-        print(f"[HOMOGENEIDAD TEMPORAL OK] Los tres subsidios de ciudad miden periodos consistentes "
-              f"(diferencia máxima: {max_diff_days} días).")
+        sources_desc = "aseo y EPM servicios" if exclude_epm_direct else "aseo, EPM servicios y EPM directos"
+        print(f"[HOMOGENEIDAD TEMPORAL OK] Los subsidios de ciudad ({sources_desc}) miden periodos "
+              f"consistentes (diferencia máxima: {max_diff_days} días).")
 
     return periods_aligned, max_diff_days
 
@@ -786,42 +835,36 @@ def _build_city_level_metrics(df_utility_subsidy, df_epm_subsidies_contributions
                                total_scholarship_medellin, available_years, cleaning_scope_verified,
                                code_99_count, total_health_rows,
                                cleaning_period_info, utility_period_info, epm_direct_period_info,
-                               subsidies_periods_aligned, subsidies_period_max_diff_days):
+                               subsidies_periods_aligned, subsidies_period_max_diff_days,
+                               epm_subsidies_confirmed_duplicate):
     """Assembles the dictionary of city-wide (non-territorial) metrics."""
     return {
         'total_epm_utility_subsidy_medellin': float(df_utility_subsidy['valor'].sum()),
         'total_epm_direct_subsidy_medellin': float(df_epm_subsidies_contributions['valor'].sum()),
-        # Semantic clarification: 'valor' mixes subsidies (negative) and
-        # contributions (positive) in the same signed column. The totals
-        # above are therefore a NET figure (subsidy - contribution), not a
-        # gross subsidy amount. Documented explicitly so the chatbot and
-        # dashboard do not present it as an unqualified "total subsidy".
         'epm_valor_es_neto_subsidio_menos_contribucion': True,
         'total_cleaning_subsidy_medellin': float(df_subsidy_and_cleaning['total_subsidio'].sum()),
         'total_cleaning_subscribers_medellin': int(df_subsidy_and_cleaning['suscriptores_subsidiados'].sum()),
         'total_scholarship_beneficiaries_medellin': int(total_scholarship_medellin),
         'investment_data_years': available_years,
         'cleaning_scope_verified': cleaning_scope_verified,
-        'subsidized_health_unmatched_pct': round(code_99_count / total_health_rows * 100, 1) if total_health_rows else 0.0,
-        # Period metadata so callers (and the chatbot) can verify and warn
-        # whether the three city-level subsidies measure the same time window.
+        'subsidized_health_unmatched_pct': float(round(code_99_count / total_health_rows * 100, 1)) if total_health_rows else 0.0,
         'cleaning_subsidy_period_end': cleaning_period_info.get('period_max'),
         'utility_subsidy_period_end': utility_period_info.get('period_max'),
         'epm_direct_subsidy_period_end': epm_direct_period_info.get('period_max'),
         'subsidies_periods_aligned': subsidies_periods_aligned,
         'subsidies_period_max_diff_days': subsidies_period_max_diff_days,
+        'epm_subsidies_confirmed_duplicate_source': epm_subsidies_confirmed_duplicate,
     }
-
 
 def _build_territorial_aggregates(df_investment_multiyear, df_subsidized_health_regime_affiliates,
                                    df_social_inclusion_actions_for_people_with_disabilities):
     """Builds the per-commune (and per-commune-year) aggregated metrics."""
-    investment_panel = df_investment_multiyear.groupby(['commune_clean', 'anio']).agg(
-        total_investment=('Inversion', 'sum')).reset_index()
+    investment_panel = df_investment_multiyear.groupby(['commune_clean', 'year']).agg(
+        total_investment=('investment_value', 'sum')).reset_index()
 
     investment_display = investment_panel.groupby('commune_clean').agg(
-        total_investment=('total_investment', 'mean'),
-        n_years_with_data=('anio', 'nunique')).reset_index()
+        avg_annual_investment=('total_investment', 'mean'),
+        n_years_with_data=('year', 'nunique')).reset_index()
 
     health_aggregate = df_subsidized_health_regime_affiliates.groupby('commune_clean').agg(
         total_subsidized_health_affiliates=('consecutivo', 'count'),
@@ -839,6 +882,26 @@ def _build_territorial_aggregates(df_investment_multiyear, df_subsidized_health_
         inclusion_aggregate['total_disabled_and_inclusion_beneficiaries'].sum()
     )
 
+    # METHODOLOGICAL NOTE (FYI, requires no immediate action):
+    # 'mean_utility_stratum' -- one of the 4 actual variables feeding
+    # the model, see MODEL_FEATURE_COLUMNS -- is calculated here from
+    # 'ESTRATO SOCIOECONÓMICO' within the inclusion and disability dataset
+    # (df_social_inclusion_actions_for_people_with_disabilities), which only
+    # covers 8,021 rows across the entire city. It is NOT calculated from the
+    # EPM dataset (df_utility_subsidy), which has a much larger subscriber
+    # base and would theoretically be a more representative source of the
+    # "true" stratum per commune.
+    #
+    # The EPM data is used, but only as a fallback (see reference_global_stratum
+    # in process_and_create_master_matrix) for communes with missing inclusion/disability
+    # data -- meaning two different sources feed the same concept depending on the case.
+    #
+    # This is not an error, but it is a known limitation: coming from a
+    # small and specific subsample (disability program beneficiaries), the
+    # average stratum per commune may be noisy or unrepresentative of the
+    # commune as a whole. This is a potential partial explanation for the
+    # non-monotonic effect that the PDP diagnosis in model_trainer.py
+    # (diagnostic_partial_dependence_stratum) already reports for this variable.
     stratum_aggregate = df_social_inclusion_actions_for_people_with_disabilities.groupby('commune_clean').agg(
         mean_utility_stratum=('ESTRATO SOCIOECONÓMICO', 'mean')).reset_index()
 
@@ -855,15 +918,12 @@ def _assemble_display_matrix(investment_display, health_aggregate, inclusion_agg
     matrix = pd.merge(matrix, stratum_aggregate, on='commune_clean', how='left')
 
     columns_to_zero_fill = [
-        'total_investment', 'n_years_with_data', 'total_subsidized_health_affiliates', 'mean_health_age',
+        'avg_annual_investment', 'n_years_with_data', 'total_subsidized_health_affiliates', 'mean_health_age',
         'total_disabled_and_inclusion_beneficiaries', 'mean_inclusion_age',
         'health_affiliates_share', 'inclusion_share'
     ]
     matrix[columns_to_zero_fill] = matrix[columns_to_zero_fill].fillna(0)
     matrix['mean_utility_stratum'] = matrix['mean_utility_stratum'].fillna(reference_global_stratum)
-
-    matrix['disability_pressure_index'] = matrix['total_disabled_and_inclusion_beneficiaries'] / (
-        matrix['total_subsidized_health_affiliates'] + 1)
 
     return matrix
 
@@ -872,10 +932,10 @@ def _assemble_panel_matrix(investment_panel, health_aggregate, inclusion_aggrega
                             available_years, reference_global_stratum):
     """Builds the 1-row-per-commune-per-year matrix used to train the model."""
     panel_index = pd.MultiIndex.from_product(
-        [MEDELLIN_TERRITORIES, available_years], names=['commune_clean', 'anio']
+        [MEDELLIN_TERRITORIES, available_years], names=['commune_clean', 'year']
     ).to_frame(index=False)
 
-    panel = pd.merge(panel_index, investment_panel, on=['commune_clean', 'anio'], how='left')
+    panel = pd.merge(panel_index, investment_panel, on=['commune_clean', 'year'], how='left')
     panel = pd.merge(panel, health_aggregate, on='commune_clean', how='left')
     panel = pd.merge(panel, inclusion_aggregate, on='commune_clean', how='left')
     panel = pd.merge(panel, stratum_aggregate, on='commune_clean', how='left')
@@ -921,9 +981,6 @@ def process_and_create_master_matrix():
         df_utility_subsidy, df_epm_subsidies_contributions, df_subsidy_and_cleaning)
 
     print("Procesando y normalizando variables territoriales...")
-    df_subsidized_health_regime_affiliates['commune_clean'] = (
-        df_subsidized_health_regime_affiliates['comuna'].apply(clean_commune_name)
-    )
     df_social_inclusion_actions_for_people_with_disabilities['commune_clean'] = (
         df_social_inclusion_actions_for_people_with_disabilities['COMUNA DE RESIDENCIA'].apply(clean_commune_name)
     )
@@ -957,6 +1014,9 @@ def process_and_create_master_matrix():
     df_epm_subsidies_contributions['valor'] = robust_numeric_clean(
         df_epm_subsidies_contributions['valor'], 'EPM directos (valor)')
 
+    epm_subsidies_confirmed_duplicate = diagnostic_check_duplicate_subsidy_sources(
+        df_utility_subsidy, df_epm_subsidies_contributions)
+
     print("Aplicando restricciones lógicas a variables demográficas...")
     code_99_count, total_health_rows = _restrict_health_affiliates_to_valid_communes(
         df_subsidized_health_regime_affiliates)
@@ -969,19 +1029,25 @@ def process_and_create_master_matrix():
 
     total_scholarship_medellin = len(df_scholarship)
 
+    # See methodological note in _build_territorial_aggregates: this average
+    # comes from a different source (EPM) than the one used for the stratum by
+    # commune (inclusion/disability). It is used solely as a fallback value
+    # for communes with missing data, not as the main source of the feature.
     reference_global_stratum = df_utility_subsidy.loc[df_utility_subsidy['estrato'] > 0, 'estrato'].mean()
     if pd.isna(reference_global_stratum) or reference_global_stratum == 0:
         reference_global_stratum = REFERENCE_STRATUM_FALLBACK
 
     subsidies_periods_aligned, subsidies_period_max_diff_days = _check_subsidies_temporal_alignment(
-        cleaning_period_info, utility_period_info, epm_direct_period_info)
+        cleaning_period_info, utility_period_info, epm_direct_period_info,
+        exclude_epm_direct=epm_subsidies_confirmed_duplicate)
 
     city_level_metrics = _build_city_level_metrics(
         df_utility_subsidy, df_epm_subsidies_contributions, df_subsidy_and_cleaning,
         total_scholarship_medellin, available_years, cleaning_scope_verified,
         code_99_count, total_health_rows,
         cleaning_period_info, utility_period_info, epm_direct_period_info,
-        subsidies_periods_aligned, subsidies_period_max_diff_days)
+        subsidies_periods_aligned, subsidies_period_max_diff_days,
+        epm_subsidies_confirmed_duplicate)
     print(f"[MÉTRICAS DE CIUDAD] {city_level_metrics}")
 
     _log_scholarship_methodology_decision(total_scholarship_before_filter, total_scholarship_medellin)

@@ -5,11 +5,11 @@ import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 
+from data_processor import FEATURE_TRANSLATION
+
 CONFIDENCE_THRESHOLD = 0.35
 UNKNOWN_INTENT = "desconocido"
 
-# Spanish training phrases: this is training data for a Spanish-speaking
-# citizen assistant, not source code, so it stays in Spanish.
 TRAINING_DATA = {
     "saludo": [
         "hola", "buenos dias", "buenas tardes", "hey", "saludos",
@@ -19,13 +19,14 @@ TRAINING_DATA = {
         "cuanta plata se invirtio", "presupuesto de comunas", "inversion publica",
         "gasto", "dinero", "ejecucion presupuestal", "recursos invertidos",
         "cuanto dinero recibio la comuna", "inversion por territorio", "comuna",
-        "territorio", "mayor", "maximo"
+        "territorio", "mayor", "maximo", "menor", "minimo",
+        "mayor inversion", "menor inversion"
     ],
     "subsidios": [
         "que subsidios hay", "ayuda de servicios publicos", "aseo y energia",
         "quien recibe subsidio", "fondos globales", "total combinado",
-        "ayudas economicas", "subsidio de epm", "subsidio de aseo", "menor",
-        "minimo", "corregimiento"
+        "ayudas economicas", "subsidio de epm", "subsidio de aseo",
+        "corregimiento"
     ],
     "estrato": [
         "cual es el estrato promedio", "nivel socioeconomico", "estratificacion de medellin",
@@ -41,18 +42,11 @@ TRAINING_DATA = {
         "random forest", "importancia de caracteristicas", "feature importance",
         "que variable pondera mas", "prediccion", "variable", "importancia", "ia"
     ],
-}
-
-# User-facing labels (Spanish). 'total_scholarship_beneficiaries' is not an
-# active model feature (not in MODEL_FEATURE_COLUMNS); kept only as a fallback
-# translation in case free text ever references it.
-FEATURE_TRANSLATION = {
-    'health_affiliates_share': 'Densidad Demográfica Vulnerable (Participación Relativa, Régimen Subsidiado)',
-    'inclusion_share': 'Vulnerabilidad Prioritaria (Participación Relativa, Inclusión Social)',
-    'total_investment': 'Presupuesto de Inversión Territorial Ejecutado',
-    'mean_utility_stratum': 'Nivel de Capacidad Socioeconómica Promedio (Estrato Real)',
-    'total_scholarship_beneficiaries': 'Acceso a Educación Superior (Becas) — Solo Métrica de Ciudad, No Territorial',
-    'anio': 'Año de la Inversión (Tendencia Temporal Multi-Año)',
+    "becas": [
+        "cuantos beneficiarios de becas hay", "becas y creditos", "acceso a educacion superior",
+        "creditos educativos", "cuantas becas se entregaron", "beca", "educacion superior medellin",
+        "programas de becas", "estudiantes beneficiados"
+    ]
 }
 
 
@@ -89,19 +83,15 @@ class IntentClassifier:
 _classifier = IntentClassifier(TRAINING_DATA)
 
 
-# ---------------------------------------------------------------------------
-# Stat helpers: each computes exactly one derived value from the inputs.
-# ---------------------------------------------------------------------------
-
 def _investment_extremes(df_master):
     if df_master.empty:
         return None, None
-    sorted_df = df_master.sort_values(by='total_investment', ascending=False)
+    sorted_df = df_master.sort_values(by='avg_annual_investment', ascending=False)
     return sorted_df.iloc[0], sorted_df.iloc[-1]
 
 
 def _average_investment(df_master):
-    return df_master['total_investment'].mean() if not df_master.empty else 0
+    return df_master['avg_annual_investment'].mean() if not df_master.empty else 0
 
 
 def _average_stratum(df_master):
@@ -116,28 +106,36 @@ def _lowest_stratum_zone(df_master):
 
 
 def _total_city_subsidies(city_level_metrics):
-    return (
-        city_level_metrics.get('total_epm_utility_subsidy_medellin', 0)
-        + city_level_metrics.get('total_epm_direct_subsidy_medellin', 0)
-        + city_level_metrics.get('total_cleaning_subsidy_medellin', 0)
-    )
+    total = (city_level_metrics.get('total_epm_utility_subsidy_medellin', 0)
+             + city_level_metrics.get('total_cleaning_subsidy_medellin', 0))
+    if not city_level_metrics.get('epm_subsidies_confirmed_duplicate_source', False):
+        total += city_level_metrics.get('total_epm_direct_subsidy_medellin', 0)
+    return total
 
 
-def _period_alignment_caveat(city_level_metrics):
-    aligned = city_level_metrics.get('subsidies_periods_aligned')
-    if aligned is False:
-        return (" ⚠️ *Nota:* estos tres subsidios no están midiendo la misma ventana de tiempo, "
-                "así que esta suma es referencial y no debe leerse como un total estrictamente comparable.")
-    if aligned is None:
-        return (" ⚠️ *Nota:* no fue posible verificar si los tres subsidios corresponden al mismo "
-                "periodo, por lo que esta cifra debe tomarse como una aproximación.")
-    return ""
+def _city_subsidy_breakdown(city_level_metrics):
+    items = [
+        ("EPM servicios públicos", city_level_metrics.get('total_epm_utility_subsidy_medellin', 0),
+         city_level_metrics.get('utility_subsidy_period_end')),
+    ]
+    if not city_level_metrics.get('epm_subsidies_confirmed_duplicate_source', False):
+        items.append(("EPM directos", city_level_metrics.get('total_epm_direct_subsidy_medellin', 0),
+                      city_level_metrics.get('epm_direct_subsidy_period_end')))
+    items.append(("Aseo", city_level_metrics.get('total_cleaning_subsidy_medellin', 0),
+                 city_level_metrics.get('cleaning_subsidy_period_end')))
+    return items
+
+
+def _format_period(period_end):
+    if period_end is None or pd.isna(period_end):
+        return "fecha desconocida"
+    return period_end.strftime('%Y-%m')
 
 
 def _net_subsidy_caveat(city_level_metrics):
     if not city_level_metrics.get('epm_valor_es_neto_subsidio_menos_contribucion', False):
         return ""
-    return (" ⚠️ *Nota:* esta cifra de EPM es un **neto** (subsidios menos contribuciones), "
+    return (" ⚠️ *Nota:* la cifra de EPM es un **neto** (subsidios menos contribuciones), "
             "ya que ambos conceptos comparten la misma columna con signo (negativo = subsidio, "
             "positivo = contribución).")
 
@@ -149,6 +147,32 @@ def _dominant_feature_label(ai_insights):
     return FEATURE_TRANSLATION.get(dominant_feature, dominant_feature)
 
 
+def _render_subsidies_amount(context):
+    """Renders the city-level subsidy figure(s). Never sums mismatched-period
+    sources into a single number; if periods don't align, each source is
+    shown separately with its own period, and a suspected-duplicate warning
+    is surfaced if applicable."""
+    if context.periods_aligned:
+        return f"el **subsidio combinado total** de la ciudad es de **${context.total_city_subsidies:,.2f} COP**."
+
+    lines = [
+        f"**{label}**: ${amount:,.2f} COP (periodo más reciente: {_format_period(period_end)})"
+        for label, amount, period_end in context.subsidy_breakdown
+    ]
+    duplicate_note = (
+        " *Nota:* 'EPM directos' no se incluye por separado porque es la misma fuente que 'EPM "
+        "servicios públicos' republicada bajo otra ficha de datos.gov.co (confirmado comparando "
+        "ambos datasets valor por valor)."
+        if context.confirmed_duplicate_source else ""
+    )
+    return (
+        "estos tres subsidios NO corresponden al mismo periodo, así que no se presentan como un "
+        "único total combinado, sino por separado:\n"
+        + "\n".join(f"- {line}" for line in lines)
+        + f"\n{duplicate_note}"
+    )
+
+
 class ResponseContext:
     """Computes, once per request, every value a response builder might need."""
 
@@ -158,16 +182,13 @@ class ResponseContext:
         self.average_stratum = _average_stratum(df_master)
         self.lowest_stratum_zone = _lowest_stratum_zone(df_master)
         self.total_city_subsidies = _total_city_subsidies(city_level_metrics)
-        self.period_caveat = _period_alignment_caveat(city_level_metrics)
+        self.periods_aligned = city_level_metrics.get('subsidies_periods_aligned')
+        self.subsidy_breakdown = _city_subsidy_breakdown(city_level_metrics)
+        self.confirmed_duplicate_source = city_level_metrics.get('epm_subsidies_confirmed_duplicate_source', False)
         self.net_caveat = _net_subsidy_caveat(city_level_metrics)
         self.dominant_feature_label = _dominant_feature_label(ai_insights)
+        self.total_scholarship_beneficiaries = city_level_metrics.get('total_scholarship_beneficiaries_medellin', 0)
 
-
-# ---------------------------------------------------------------------------
-# Response builders: one function per intent. Adding a new intent means
-# adding one function here and one entry in RESPONSE_BUILDERS below — nothing
-# else changes (open/closed).
-# ---------------------------------------------------------------------------
 
 def _build_greeting_response(context):
     return (
@@ -178,28 +199,36 @@ def _build_greeting_response(context):
     )
 
 
+def _build_scholarship_response(context):
+    return (
+        f"En becas y créditos para educación superior, Medellín registra **"
+        f"{context.total_scholarship_beneficiaries} beneficiarios** en la fuente consultada "
+        f"(dataset departamental de Antioquia, filtrado por municipio de residencia). "
+        f"⚠️ *Nota:* esta cifra es una **métrica agregada de ciudad**, no se desagrega por comuna: "
+        f"tras el filtro geográfico la muestra quedó muy pequeña frente al total original, así que "
+        f"no forma parte del modelo predictivo ni del análisis territorial por comuna."
+    )
+
+
 def _build_investment_response(context):
     if context.max_investment_row is None:
         return "Aún no se registran datos territoriales cargados."
     return (
-        f"Analizando la matriz territorial, la zona con **mayor inversión real ejecutada** "
-        f"es **{context.max_investment_row['commune_clean']}** con un monto estimado de "
-        f"${context.max_investment_row['total_investment']:,.2f} COP."
+        f"Analizando la matriz territorial: la zona con **mayor inversión promedio anual** "
+        f"es **{context.max_investment_row['commune_clean']}**, con un monto promedio de "
+        f"${context.max_investment_row['avg_annual_investment']:,.2f} COP por año. En el otro extremo, "
+        f"la zona con **menor inversión promedio anual** es **{context.min_investment_row['commune_clean']}**, "
+        f"con ${context.min_investment_row['avg_annual_investment']:,.2f} COP por año "
+        f"(cifras promedio 2015-2018, no un total acumulado)."
     )
 
 
 def _build_subsidies_response(context):
-    if context.min_investment_row is None:
-        return "Aún no se registran datos territoriales cargados."
     return (
         f"Los subsidios (EPM servicios públicos, EPM directos y aseo) están reportados a "
         f"nivel de todo el municipio de Medellín, no por comuna individual, ya que las "
-        f"fuentes originales no incluyen esa llave geográfica. El **total combinado de "
-        f"subsidios de la ciudad** es de **${context.total_city_subsidies:,.2f} COP**."
-        f"{context.period_caveat}{context.net_caveat} "
-        f"Adicionalmente, la comuna con **menor inversión territorial** registrada es "
-        f"**{context.min_investment_row['commune_clean']}** con "
-        f"${context.min_investment_row['total_investment']:,.2f} COP."
+        f"fuentes originales no incluyen esa llave geográfica. {_render_subsidies_amount(context)}"
+        f"{context.net_caveat}"
     )
 
 
@@ -213,10 +242,9 @@ def _build_stratum_response(context):
 
 def _build_average_response(context):
     return (
-        f"Calculando métricas agregadas: la **inversión territorial promedio** por comuna/"
-        f"corregimiento es de **${context.average_investment:,.2f} COP**. A nivel de ciudad, el subsidio "
-        f"combinado total (EPM + aseo) asciende a **${context.total_city_subsidies:,.2f} COP**."
-        f"{context.period_caveat}{context.net_caveat}"
+        f"Calculando métricas agregadas: la **inversión promedio anual** por comuna/"
+        f"corregimiento (promedio 2015-2018) es de **${context.average_investment:,.2f} COP**. A nivel de ciudad, "
+        f"{_render_subsidies_amount(context)}{context.net_caveat}"
     )
 
 
@@ -245,12 +273,13 @@ RESPONSE_BUILDERS = {
     "estrato": _build_stratum_response,
     "promedio": _build_average_response,
     "modelo_ml": _build_model_response,
+    "becas": _build_scholarship_response,
     UNKNOWN_INTENT: _build_unknown_response,
 }
 
 
-def obtener_respuesta_asistente(user_text, df_master, ai_insights, city_level_metrics):
-    """Public entry point. Name kept in Spanish because app.py imports it as-is."""
+def get_assistant_response(user_text, df_master, ai_insights, city_level_metrics):
+    """Public entry point for the chatbot."""
     if not user_text or pd.isna(user_text):
         return "Por favor, escribe una pregunta para poder ayudarte."
 

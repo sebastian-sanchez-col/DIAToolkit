@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador de Escenarios Territoriales - Reto 7</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         .legend-dot {
@@ -50,7 +51,7 @@
                 <div class="card text-white bg-success mb-3 shadow-sm">
                     <div class="card-body">
                         <h6 class="card-title text-uppercase font-weight-bold">Bases de Datos Consultadas</h6>
-                        <p class="card-text fs-5">7 Datasets de datos.gov.co</p>
+                        <p class="card-text fs-5">7 Fuentes de datos.gov.co (10 archivos)</p>
                     </div>
                 </div>
             </div>
@@ -69,20 +70,25 @@
                         </p>
                         <hr>
                         <form id="simulatorForm" class="row g-4">
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-bold text-dark">👥 Afiliados Régimen Subsidiado</label>
                                 <input type="range" class="form-range" name="health_affiliates" min="0" max="100000" step="100" value="35000" oninput="this.nextElementSibling.value = Number(this.value).toLocaleString()">
                                 <output class="badge bg-secondary">35,000</output>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-bold text-dark">🏠 Estrato Socioeconómico Promedio</label>
                                 <input type="range" class="form-range" name="stratum" min="1" max="6" step="0.1" value="2.1" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">2.1</output>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label class="form-label fw-bold text-dark">♿ Beneficiarios Inclusión / Discapacidad</label>
                                 <input type="range" class="form-range" name="disability_programs" min="0" max="1500" step="10" value="320" oninput="this.nextElementSibling.value = this.value">
                                 <output class="badge bg-secondary">320</output>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-bold text-dark">📅 Año de Proyección</label>
+                                <input type="range" class="form-range" name="year" min="{{ min_simulation_year }}" max="{{ max_simulation_year }}" step="1" value="{{ default_simulation_year }}" oninput="this.nextElementSibling.value = this.value">
+                                <output class="badge bg-secondary">{{ default_simulation_year }}</output>
                             </div>
                             <div class="col-md-12 d-flex justify-content-end">
                                 <button type="button" onclick="executePrescriptiveSimulation()" class="btn btn-primary px-5 py-3 fw-bold shadow">
@@ -103,7 +109,7 @@
         <div class="row mb-5">
             <div class="col-md-12">
                 <div class="card p-3 shadow-sm">
-                    <h5 class="card-title text-secondary mb-3">Inversión Asignada por Comuna</h5>
+                    <h5 class="card-title text-secondary mb-3">Inversión Promedio Anual por Comuna (2015-2018)</h5>
                     <div style="position: relative; height: 380px; width: 100%;">
                         <canvas id="subsidiesChart"></canvas>
                     </div>
@@ -182,7 +188,7 @@
                             <th class="text-center">Clúster Vulnerabilidad</th>
                             <th class="text-center">Afiliados Salud (R.S.)</th>
                             <th class="text-center">Estrato Promedio</th>
-                            <th class="text-end">Inversión Real ($)</th>
+                            <th class="text-end">Inversión Promedio Anual ($)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -200,7 +206,7 @@
                         </td>
                         <td class="text-center">{{ "{:,.0f}".format(row.total_subsidized_health_affiliates) }}</td>
                         <td class="text-center">{{ "{:,.2f}".format(row.mean_utility_stratum) }}</td>
-                        <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.total_investment) }}</td>
+                        <td class="text-end text-success fw-bold">${{ "{:,.2f}".format(row.avg_annual_investment) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -236,7 +242,7 @@
             data: {
                 labels: {{ chart_labels | tojson }},
                 datasets: [{
-                    label: 'Inversión Asignada ($)',
+                    label: 'Inversión Promedio Anual ($)',
                     data: {{ chart_investment | tojson }},
                     backgroundColor: 'rgba(13, 110, 253, 0.7)',
                     borderColor: 'rgba(13, 110, 253, 1)',
@@ -281,7 +287,6 @@
             }
         });
     </script>
-</body>
 
 <!-- Widget Conversacional del Chatbot -->
 <button id="chatCircle" class="btn btn-primary rounded-circle shadow-lg position-fixed" style="bottom: 25px; right: 25px; width: 60px; height: 60px; z-index: 1050; display: flex; align-items: center; justify-content: center;">
@@ -314,9 +319,6 @@
         </form>
     </div>
 </div>
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     const chatCircle = document.getElementById("chatCircle");
@@ -372,4 +374,5 @@ document.addEventListener("DOMContentLoaded", function() {
     }
 });
 </script>
+</body>
 </html>

@@ -131,7 +131,7 @@ def validate_model_with_group_kfold(X, y, groups):
     }
 
 
-def diagnostic_partial_dependence_stratum(rf_model, X, feature_name="mean_utility_stratum"):
+def diagnostic_partial_dependence_stratum(rf_model, X, y, feature_name="mean_utility_stratum"):
     """
     Verifies whether the effect of 'mean_utility_stratum' on the Random Forest
     prediction is consistent with the observed simple correlation, or if it is
@@ -161,11 +161,12 @@ def diagnostic_partial_dependence_stratum(rf_model, X, feature_name="mean_utilit
     for value, prediction in zip(grid_values, avg_predictions):
         print(f"       {value:.2f} -> ${prediction:,.2f}")
 
-    _report_pdp_monotonicity(avg_predictions, feature_name)
+    simple_correlation = X[feature_name].corr(y)
+    _report_pdp_monotonicity(avg_predictions, feature_name, simple_correlation)
     _report_pdp_first_jump(avg_predictions, grid_values)
 
 
-def _report_pdp_monotonicity(avg_predictions, feature_name):
+def _report_pdp_monotonicity(avg_predictions, feature_name, simple_correlation):
     """Reports whether the partial dependence effect is monotonic or erratic."""
     prediction_range = avg_predictions.max() - avg_predictions.min()
     noise_threshold = prediction_range * PDP_NOISE_THRESHOLD_RATIO
@@ -185,8 +186,8 @@ def _report_pdp_monotonicity(avg_predictions, feature_name):
               f"en todo el rango observado.")
     else:
         print(f"  └─ El efecto es consistentemente NEGATIVO o PLANO (a mayor estrato, menor o igual inversión "
-              f"predicha), lo cual SÍ es coherente con la correlación simple negativa (r=-0.158) reportada antes.")
-
+              f"predicha), lo cual SÍ es coherente con la correlación simple negativa (r={simple_correlation:.3f}) "
+              f"reportada antes.")
 
 def _report_pdp_first_jump(avg_predictions, grid_values):
     """Flags a suspiciously large first-segment jump in the partial dependence curve
@@ -218,7 +219,7 @@ def fit_prescriptive_model(df_panel):
     # once the general approach has been validated above to generalize reasonably well).
     rf_model = RandomForestRegressor(**RANDOM_FOREST_PARAMS)
     rf_model.fit(X, y)
-    diagnostic_partial_dependence_stratum(rf_model, X, feature_name="mean_utility_stratum")
+    diagnostic_partial_dependence_stratum(rf_model, X, y, feature_name="mean_utility_stratum")
 
     rf_model.validation_metrics_ = validation_metrics
     return rf_model
@@ -228,9 +229,9 @@ def train_advanced_models(df_display, df_panel):
     """
     df_display: A matrix with ONE row per commune/district (21 rows total). It is used
         for the vulnerability clustering and for everything displayed on the
-        dashboard, tables, or chatbot (it does not contain an 'anio' column).
+        dashboard, tables, or chatbot (it does not contain a 'year' column).
     df_panel: A matrix with one row per commune x year (larger N). It is used exclusively
-        to train the Random Forest model, as it includes the 'anio' column defined
+        to train the Random Forest model, as it includes the 'year' column defined
         in MODEL_FEATURE_COLUMNS.
     """
     print("\n====================================================")
