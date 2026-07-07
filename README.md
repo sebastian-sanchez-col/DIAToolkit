@@ -210,3 +210,8 @@ descarga cada uno desde el enlace correspondiente en la tabla de "Fuentes de dat
 `sources/` con el nombre exacto de archivo indicado en esa misma tabla (los nombres deben coincidir 
 con `INVESTMENT_FILES_BY_YEAR` y `load_raw_datasets()` en `data_processor.py`). Sin estos 10 archivos, 
 `python app.py` fallará al arrancar.
+
+## Publicación
+
+* Repositorio público: https://github.com/sebastian-sanchez-col/DIAToolkit.git
+* Registrado en la sección de usos de datos.gov.co: https://herramientas.datos.gov.co/usos/distributional-impact-analysis-toolkit
