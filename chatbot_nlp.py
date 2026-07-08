@@ -60,6 +60,16 @@ DATA_GOVERNANCE = {
         "fecha_actualizacion": "ver periodo reportado en cada respuesta",
         "politica_de_uso": "Datos abiertos, uso libre citando la fuente",
     },
+    "estrato": {
+        "fuente": "Implementación de acciones de inclusión social (discapacidad) y Subsidios EPM (datos.gov.co)",
+        "fecha_actualizacion": "ver periodo reportado por fuente",
+        "politica_de_uso": "Datos abiertos, uso libre citando la fuente",
+    },
+    "becas": {
+        "fuente": "Beneficiarios de becas y créditos de acceso a educación superior de Antioquia (datos.gov.co)",
+        "fecha_actualizacion": "última carga disponible",
+        "politica_de_uso": "Datos abiertos, uso libre citando la fuente",
+    },
 }
 
 
@@ -93,6 +103,16 @@ class IntentClassifier:
             return UNKNOWN_INTENT
         return self._model.classes_[best_idx]
 
+    def classify_with_confidence(self, text):
+        """Returns (intent, confidence) instead of just the intent, in order to
+        expose the uncertainty to the user instead of hiding it."""
+        vector = self._vectorizer.transform([text.lower().strip()])
+        probabilities = self._model.predict_proba(vector)[0]
+        best_idx = np.argmax(probabilities)
+        confidence = float(probabilities[best_idx])
+        intent = self._model.classes_[best_idx] if confidence >= self._confidence_threshold else UNKNOWN_INTENT
+        return intent, confidence
+
 
 _classifier = IntentClassifier(TRAINING_DATA)
 
@@ -104,34 +124,6 @@ def _governance_footer(intent):
     return (f"\n\n📎 *Fuente: {meta['fuente']} | {meta['fecha_actualizacion']} | "
             f"{meta['politica_de_uso']}*")
 
-
-def classify_with_confidence(self, text):
-    """Devuelve (intent, confidence) en vez de solo el intent, para poder
-    exponerle la incertidumbre al usuario en vez de ocultarla."""
-    vector = self._vectorizer.transform([text.lower().strip()])
-    probabilities = self._model.predict_proba(vector)[0]
-    best_idx = np.argmax(probabilities)
-    confidence = float(probabilities[best_idx])
-    intent = self._model.classes_[best_idx] if confidence >= self._confidence_threshold else UNKNOWN_INTENT
-    return intent, confidence
-
-
-def get_assistant_response(user_text, df_master, ai_insights, city_level_metrics):
-    if not user_text or pd.isna(user_text):
-        return "Por favor, escribe una pregunta para poder ayudarte."
-
-    intent, confidence = _classifier.classify_with_confidence(str(user_text))
-    context = ResponseContext(df_master, ai_insights, city_level_metrics)
-    builder = RESPONSE_BUILDERS.get(intent, _build_unknown_response)
-    answer = builder(context)
-
-    if intent != UNKNOWN_INTENT and confidence < 0.55:
-        answer += ("\n\n⚠️ *No tengo alta certeza de haber entendido tu pregunta "
-                   f"(confianza: {confidence*100:.0f}%). Si la respuesta no es lo que "
-                   f"buscabas, intenta reformularla.*")
-
-    answer += _governance_footer(intent)
-    return answer
 
 def _investment_extremes(df_master):
     if df_master.empty:

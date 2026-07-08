@@ -27,33 +27,6 @@ aceptación explícitos y sin ambigüedad técnica, en lenguaje funcional.
 **Criterios de aceptación:**
 - La respuesta incluye el nombre de la comuna, el monto y la fuente.
 
-### HU-03
-**Como** ciudadano
-**quiero** comparar la inversión entre dos comunas específicas
-**para** entender la diferencia relativa entre ellas
-
-**Criterios de aceptación:**
-- El chatbot reconoce el nombre de ambas comunas en la pregunta y devuelve
-  ambos montos junto con la diferencia porcentual.
-- Si una comuna no existe en el dataset, el chatbot lo indica explícitamente
-  (no inventa un valor).
-
-### HU-04
-**Como** ciudadano
-**quiero** ver la evolución de la inversión de mi comuna año por año (2015-2018)
-**para** saber si ha aumentado o disminuido con el tiempo
-
-**Criterios de aceptación:**
-- La tabla o gráfico muestra los 4 años disponibles, no solo el promedio.
-- Si un año no tiene dato para esa comuna, se muestra como "sin dato", no como 0.
-
-### HU-05
-**Como** funcionario de planeación municipal
-**quiero** exportar la matriz de inversión por comuna a un archivo descargable
-**para** usarla en reportes internos fuera del dashboard
-
-**Criterios de aceptación:**
-- Existe un botón o endpoint que descarga la tabla en CSV o XLSX.
 
 ---
 
@@ -245,13 +218,22 @@ pregunta
 
 ### HU-23
 **Como** miembro del equipo de datos
-**quiero** un scorecard formal de las 6 dimensiones de calidad (completitud,
-unicidad, validez, consistencia, exactitud, oportunidad)
-**para** poder reportar objetivamente el estado de cada fuente
+**quiero** un scorecard formal de calidad con las dimensiones que sí se pueden medir de forma
+confiable (completitud, unicidad, validez, oportunidad) y consistencia derivada de señales
+cruzadas ya existentes
+**para** poder reportar objetivamente el estado de cada fuente, sin inventar cifras donde no hay
+sustento para medirlas
 
 **Criterios de aceptación:**
-- `build_quality_scorecard` corre sobre las 4 fuentes principales y queda
-  disponible en `city_level_metrics['quality_scorecard']`.
+- `build_quality_scorecard` corre sobre las 4 fuentes principales y queda disponible en
+  `city_level_metrics['quality_scorecard']`.
+- **4 de 6 dimensiones formalmente medidas** (completitud, unicidad, validez, oportunidad).
+- **Consistencia** se calcula reutilizando señales cruzadas ya existentes en el pipeline
+  (alineación temporal de periodos entre Aseo/EPM, detección de duplicado EPM servicios vs.
+  directos), no como una métrica nueva sin sustento.
+- **Exactitud** se documenta explícitamente como limitación conocida (sin fuente de verdad
+  externa no es medible de forma confiable), igual que ya se hace con becas o el código 99 —
+  no se reporta como 0% ni como celda vacía sin explicación.
 
 ### HU-24
 **Como** ciudadano
@@ -275,18 +257,20 @@ en cada arranque
 ---
 
 ## Épica 9 — Consumo de APIs y estándares de datos
-
+ 
 ### HU-26
 **Como** miembro del equipo de datos
-**quiero** que el pipeline consuma la API REST (Socrata) de datos.gov.co como
-fuente primaria
-**para** trabajar siempre con el dato más reciente publicado, no solo con una
-copia local estática
+**quiero** que el pipeline consuma la API REST (Socrata) de datos.gov.co como fuente primaria
+**para los archivos de inversión territorial** (los que sí varían año a año en datos.gov.co),
+**para** trabajar siempre con el dato más reciente publicado, no solo con una copia local estática
 
 **Criterios de aceptación:**
-- `fetch_dataset_from_api` se invoca antes de leer el CSV local para las
-  4 fichas de inversión.
+- `fetch_dataset_from_api` se invoca antes de leer el CSV local para las 4 fichas de inversión.
 - Si la API falla, el pipeline usa el CSV local automáticamente sin detenerse.
+- **Alcance explícito:** las otras 6 fuentes (becas, EPM servicios, régimen subsidiado, aseo,
+  inclusión/discapacidad, EPM directos) NO están cubiertas por esta historia; se cargan
+  únicamente desde CSV local (`load_raw_datasets`). Extenderles este mismo patrón es trabajo
+  futuro, no implícito en "hecho" de HU-26.
 
 ### HU-27
 **Como** miembro del equipo de datos
@@ -294,7 +278,7 @@ copia local estática
 paginación `$limit`/`$offset`)
 **para** cumplir con las buenas prácticas de consumo de APIs enseñadas en la
 capacitación
-
+ 
 **Criterios de aceptación:**
 - El módulo `datos_gov_api.py` documenta explícitamente el verbo HTTP, el
   formato de respuesta y el mecanismo de paginación usado.
@@ -312,16 +296,6 @@ capacitación
 - El gráfico de barras (`subsidiesChart`) ordena las comunas de mayor a menor
   inversión promedio.
 
-### HU-29
-**Como** ciudadano
-**quiero** que el dashboard incluya una narrativa breve de "historia con datos"
-(contexto → hallazgo → llamado a la acción)
-**para** entender el mensaje sin tener que interpretar los gráficos por mi cuenta
-
-**Criterios de aceptación:**
-- Cada gráfico del dashboard tiene un texto introductorio de 2-3 líneas que
-  explica qué se debe concluir de él, siguiendo el framework de storytelling
-  con datos visto en la sesión de Power BI.
 
 ### HU-30
 **Como** ciudadano

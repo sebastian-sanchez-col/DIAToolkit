@@ -100,6 +100,7 @@
                             <span class="fs-5 text-white mb-0 fw-bold">🤖 Asignación Presupuestal Estimada:</span>
                             <span id="simulationResponse" class="fs-2 fw-bold text-warning">$ 0.00</span>
                         </div>
+                        <div id="simulationWarning" class="alert alert-warning mt-2 d-none"></div>
                     </div>
                 </div>
             </div>
@@ -182,7 +183,8 @@
                     <h5 class="card-title text-secondary mb-3">🔍 Calidad y Vigencia de las Fuentes de Datos</h5>
                     <p class="small text-muted mb-3">
                         Scorecard calculado en cada arranque del pipeline sobre las dimensiones de
-                        completitud, unicidad, validez y oportunidad (antigüedad del dato).
+                        completitud, unicidad, validez, consistencia y oportunidad (antigüedad del dato).
+                        Exactitud se documenta aparte como limitación conocida (ver nota debajo de la tabla).
                     </p>
                     <div class="table-responsive">
                         <table class="table table-sm table-bordered align-middle mb-0">
@@ -192,6 +194,8 @@
                                     <th class="text-center">Completitud</th>
                                     <th class="text-center">Unicidad</th>
                                     <th class="text-center">Validez</th>
+                                    <th class="text-center">Consistencia</th>
+                                    <th class="text-center">Exactitud</th>
                                     <th class="text-center">Oportunidad (antigüedad)</th>
                                 </tr>
                             </thead>
@@ -221,6 +225,16 @@
                                     {% endif %}
                                 </td>
                                 <td class="text-center">
+                                    {% if dims.consistencia is not none %}
+                                        {{ "{:.1f}".format(dims.consistencia) }}%
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <span class="badge bg-secondary" title="Sin fuente de verdad externa para comparar; no es medible de forma confiable">⚪ No medible</span>
+                                </td>
+                                <td class="text-center">
                                     {% if dims.oportunidad_dias is not none %}
                                         {% set years_old = (dims.oportunidad_dias / 365) | round(1) %}
                                         {% if dims.oportunidad_dias > quality_stale_threshold_days %}
@@ -238,6 +252,11 @@
                         </table>
                     </div>
                     <p class="small text-muted mt-3 mb-0">
+                        ℹ️ La columna <strong>Exactitud</strong> se marca como "No medible" a propósito: sin una
+                        fuente de verdad externa contra la cual comparar estos datos administrativos, no se puede
+                        calcular un puntaje confiable. Las reglas de formato/rango ya se cubren en <strong>Validez</strong>.
+                    </p>
+                    <p class="small text-muted mt-2 mb-0">
                         ⚠️ Las fuentes marcadas en rojo tienen más de
                         {{ (quality_stale_threshold_days / 365) | round(0) }} años sin actualizarse.
                         Cualquier conclusión basada en ellas (incluida la simulación de inversión) debe
@@ -296,12 +315,17 @@
             fetch('/simulate', { method: 'POST', body: formData })
             .then(response => response.json())
             .then(data => {
-                if(data.success) {
+                if (data.success) {
                     const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 });
-                    // CORRECCIÓN CLAVE: Leemos predicted_investment enviado desde app.py
                     document.getElementById('simulationResponse').innerText = formatter.format(data.predicted_investment);
-                } else {
-                    alert("Error en la simulación: " + data.error);
+
+                    const warningBox = document.getElementById('simulationWarning');
+                    if (data.extrapolation_warning) {
+                        warningBox.innerText = '⚠️ ' + data.extrapolation_warning;
+                        warningBox.classList.remove('d-none');
+                    } else {
+                        warningBox.classList.add('d-none');
+                    }
                 }
             })
             .catch(err => console.error("API error:", err));
@@ -332,12 +356,7 @@
                 labels: ["", "", "", ""],
                 datasets: [{
                     data: {{ ai_values | tojson }},
-                    backgroundColor: [
-                        '#ffc107', // Salud
-                        '#198754', // Inclusión
-                        '#0d6efd', // Estrato
-                        '#6f42c1'  // Año
-                    ],
+                    backgroundColor: ['#ffc107', '#198754', '#0d6efd', '#6f42c1'],
                     borderWidth: 0
                 }]
             },
@@ -345,7 +364,6 @@
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
                 scales: {
                     x: {
                         beginAtZero: true,
@@ -355,6 +373,17 @@
                 },
                 layout: {
                     padding: { left: 5, right: 15, top: 10, bottom: 5 }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: function(items) {
+                                const labels = {{ ai_labels | tojson }};
+                                return labels[items[0].dataIndex];
+                            }
+                        }
+                    }
                 }
             }
         });

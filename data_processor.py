@@ -20,22 +20,6 @@ CLEANING_COLUMN_CANDIDATES = [
     'municipio_o_sector', 'Municipio o Sector', 'municipio', 'Municipio', 'MUNICIPIO',
 ]
 
-RAW_DATASET_SOCRATA_IDS = {
-    'scholarship': 'ya7f-466y',
-    'utility_subsidy': 'av6t-m6ju',
-    'health_regime_affiliates': 'n7qb-ahpa',
-    'cleaning_subsidy': 'db2v-e8wa',
-    'inclusion_disability': 'hdjq-kape',
-    'epm_direct_subsidy': 'dag3-4sey',
-}
-
-INVESTMENT_FILES_BY_YEAR = {
-    2015: 'sources/inversion_por_comunas_y_corregimientos_2015_medellin.csv',
-    2016: 'sources/inversion_por_comunas_y_corregimientos_2016_medellin.csv',
-    2017: 'sources/inversion_por_comunas_y_corregimientos_2017_medellin.csv',
-    2018: 'sources/inversion_por_comunas_y_corregimientos_2018.csv',
-}
-
 INVESTMENT_COLUMN_CANDIDATES = {
     'comuna_name': ['Nombre Comuna', 'nombre_comuna', 'NOMBRE_COMUNA', 'NOMBRE COMUNA',
                     'Comuna', 'comuna', 'COMUNA'],
@@ -226,6 +210,18 @@ def compute_validity(df, column, validator_fn, label_for_log):
     return score
 
 
+def compute_consistency(cross_source_checks, label_for_log):
+    """Consistency = % of cross-checks between sources that match.
+    Reuses already calculated signals (temporal alignment, duplicates) instead
+    of introducing a new metric without backing."""
+    if not cross_source_checks:
+        return None
+    score = sum(1 for ok in cross_source_checks if ok) / len(cross_source_checks) * 100
+    print(f"[CALIDAD - CONSISTENCIA] {label_for_log}: {score:.1f}% de verificaciones "
+          f"cruzadas entre fuentes fueron coherentes.")
+    return score
+
+
 def compute_timeliness(period_end, label_for_log, reference_date=None):
     """
     Oportunidad = tiempo_disponibilidad - tiempo_evento.
@@ -260,6 +256,9 @@ def build_quality_scorecard(datasets_config):
        'validity_column':..., 'validity_fn':..., 'period_end':...}
     Imprime y retorna un resumen consolidado de las 6 dimensiones por dataset.
     """
+    print("[CALIDAD - EXACTITUD] No se calcula: no existe una fuente de verdad externa "
+          "para comparar los valores de estas fuentes administrativas. Se documenta como "
+          "limitación conocida del scorecard, no como dato faltante por descuido.")
     scorecard = {}
     for cfg in datasets_config:
         label = cfg['label']
@@ -267,9 +266,11 @@ def build_quality_scorecard(datasets_config):
             'completitud': compute_completeness(cfg['df'], cfg.get('required_cols', []), label),
             'unicidad': compute_uniqueness(cfg['df'], cfg.get('key_cols', []), label),
             'validez': compute_validity(cfg['df'], cfg.get('validity_column'),
-                                         cfg.get('validity_fn', lambda x: True), label)
-                       if cfg.get('validity_column') else None,
+                                        cfg.get('validity_fn', lambda x: True), label)
+            if cfg.get('validity_column') else None,
+            'consistencia': None,  # se integra después en el orquestador (ver más abajo)
             'oportunidad_dias': compute_timeliness(cfg.get('period_end'), label),
+            'exactitud': None,
         }
     return scorecard
 
@@ -732,34 +733,17 @@ def load_investment_multiyear():
     return df_investment_multiyear, available_years
 
 
-def _load_dataset_with_fallback(key, local_csv_path):
-    """Same pattern used in investment: tries the API; if it fails, uses the local CSV."""
-    dataset_id = RAW_DATASET_SOCRATA_IDS.get(key)
-    if dataset_id:
-        df, source_used = load_investment_year_with_api_fallback(dataset_id, local_csv_path, year=None)
-        print(f"[FUENTE {key.upper()}] Origen de los datos: {source_used}")
-        if df is not None:
-            return df
-    return pd.read_csv(local_csv_path)
-
-
 def load_raw_datasets():
-    """Reads all raw source datasets, trying the API first and falling back to local CSV."""
-    df_scholarship = _load_dataset_with_fallback(
-        'scholarship',
+    """Reads all raw CSV source files into memory."""
+    df_scholarship = pd.read_csv(
         'sources/Beneficiaros_de_becas_y_creditos_de_programas_de_acceso_a_la_educación_superior_de_Antioquia_20260617.csv')
-    df_utility_subsidy = _load_dataset_with_fallback(
-        'utility_subsidy',
+    df_utility_subsidy = pd.read_csv(
         'sources/Subsidios_y_Contribuciones_de_Servicios_Públicos_Domiciliarios_–_EPM_20260617.csv')
-    df_subsidized_health_regime_affiliates = _load_dataset_with_fallback(
-        'health_regime_affiliates', 'sources/subsidiado.csv')
-    df_subsidy_and_cleaning = _load_dataset_with_fallback(
-        'cleaning_subsidy', 'sources/subsidios_y_contribuciones_aseo.csv')
-    df_social_inclusion_actions_for_people_with_disabilities = _load_dataset_with_fallback(
-        'inclusion_disability',
+    df_subsidized_health_regime_affiliates = pd.read_csv('sources/subsidiado.csv')
+    df_subsidy_and_cleaning = pd.read_csv('sources/subsidios_y_contribuciones_aseo.csv')
+    df_social_inclusion_actions_for_people_with_disabilities = pd.read_csv(
         'sources/implementacion_acciones_personas_discapacidad_familiares_cuidadores_2023.csv')
-    df_epm_subsidies_contributions = _load_dataset_with_fallback(
-        'epm_direct_subsidy', 'sources/subsidio_contribuciones_epm.csv')
+    df_epm_subsidies_contributions = pd.read_csv('sources/subsidio_contribuciones_epm.csv')
 
     return (df_scholarship, df_utility_subsidy, df_subsidized_health_regime_affiliates,
             df_subsidy_and_cleaning, df_social_inclusion_actions_for_people_with_disabilities,
@@ -1209,6 +1193,21 @@ def process_and_create_master_matrix():
     subsidies_periods_aligned, subsidies_period_max_diff_days = _check_subsidies_temporal_alignment(
         cleaning_period_info, utility_period_info, epm_direct_period_info,
         exclude_epm_direct=epm_subsidies_confirmed_duplicate)
+
+    # Consistency (dimension that was missing in the scorecard, see HU-23): it is
+    # integrated here because it depends on signals that do not exist yet when
+    # build_quality_scorecard runs above. It reuses the temporal alignment of
+    # periods and the duplicate detection between EPM services/directs, instead
+    # of inventing a new metric.
+    print("Integrando dimensión de Consistencia al scorecard de calidad...")
+    cross_source_checks = []
+    if subsidies_periods_aligned is not None:
+        cross_source_checks.append(subsidies_periods_aligned)
+    cross_source_checks.append(epm_subsidies_confirmed_duplicate)
+    consistency_score = compute_consistency(cross_source_checks, 'Subsidios de ciudad (EPM + Aseo)')
+    for label in ('Subsidios EPM servicios', 'Subsidios Aseo'):
+        if label in quality_scorecard:
+            quality_scorecard[label]['consistencia'] = consistency_score
 
     city_level_metrics = _build_city_level_metrics(
         df_utility_subsidy, df_epm_subsidies_contributions, df_subsidy_and_cleaning,

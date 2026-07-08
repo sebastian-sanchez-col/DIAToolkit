@@ -76,7 +76,16 @@ consumo de APIs y dashboard) y un plan de 6 sprints.
 
 ## Fuentes de datos
 
-Todos los datasets provienen de [datos.gov.co](https://www.datos.gov.co). En total son **7 fuentes de datos distintas**, cargadas desde **10 archivos CSV** locales en `sources/` la inversión territorial es la única fuente publicada en más de una ficha (una por año, 2015 a 2018). La aplicación **no consulta APIs externas en tiempo de ejecución**.
+Todos los datasets provienen de [datos.gov.co](https://www.datos.gov.co). En total son **7 fuentes 
+de datos distintas**, cargadas desde **10 archivos CSV** locales en `sources/`; la inversión territorial 
+es la única fuente publicada en más de una ficha (una por año, 2015 a 2018).
+
+**Consumo de API:** solo la inversión territorial (4 fichas, 2015-2018) consulta primero la API REST 
+de datos.gov.co (Socrata), con respaldo automático en el CSV local si la API falla (`datos_gov_api.py`, 
+`load_investment_year_with_api_fallback`). Las otras 6 fuentes (becas, EPM servicios, régimen 
+subsidiado, aseo, inclusión/discapacidad y EPM directos) se leen **únicamente desde CSV local**; 
+no tienen integración con la API todavía. Esto se documenta como limitación conocida del alcance 
+actual (Sprint 2), no como funcionalidad ya cubierta.
 
 | Dataset | Archivo local | Ficha en datos.gov.co                                                                                                                                                                                       |
 |---|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -199,7 +208,10 @@ Estas decisiones están documentadas también como logs en consola durante el ar
 * **Comuna código 99 (régimen subsidiado de salud)**: una porción de las filas (~12.6% en la última corrida; ver el log [DIAGNÓSTICO CÓDIGO 99] al arrancar para el porcentaje exacto de cada corrida) tienen comuna=99, valor no documentado en la ficha técnica oficial del dataset. Se excluyen del análisis territorial por comuna pero se mantienen en las métricas agregadas de ciudad.
 * **Homogeneidad temporal de subsidios**: aseo y EPM servicios no corresponden al mismo periodo (diferencia de ~972 días en la ejecución de referencia), por lo que no se suman como un total único de ciudad; se muestran desagregados con su periodo de referencia.
 * **Estrato socioeconómico del modelo** (`mean_utility_stratum`): se calcula desde el dataset de inclusión/discapacidad (8,021 filas), no desde EPM (mayor cobertura de suscriptores). EPM se usa solo como valor de respaldo para comunas sin dato. Ver comentario en `_build_territorial_aggregates()` en `data_processor.py`.
-
+* **Cobertura de la API (Socrata)**: solo se implementó para inversión territorial (4 fichas). 
+  Extender el mismo patrón de `fetch_dataset_from_api` a becas, EPM servicios, régimen subsidiado, 
+  aseo, inclusión/discapacidad y EPM directos queda pendiente; hoy esas 6 fuentes dependen 
+  exclusivamente del CSV local en `sources/`.
 
 ## Project Structure
 

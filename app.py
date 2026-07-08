@@ -77,12 +77,15 @@ def simulate():
         year = float(request.form.get('year', DEFAULT_SIMULATION_YEAR))
 
         max_trained_year = max(_available_years) if _available_years else None
+        extrapolation_warning = None
         if max_trained_year is not None and year > max_trained_year:
-            print(f"[ALERTA SIMULADOR] year={year} está fuera del rango de entrenamiento "
-                  f"(máximo año observado en los datos: {max_trained_year}). El Random Forest no "
-                  f"extrapola tendencias: la predicción para este año equivale, en la práctica, a la "
-                  f"del límite superior observado ({max_trained_year}), no a una proyección real de "
-                  f"tendencia futura. Tratar este resultado con cautela.")
+            extrapolation_warning = (
+                f"El año {int(year)} está fuera del rango de entrenamiento (máximo observado: "
+                f"{max_trained_year}). El Random Forest no extrapola tendencias: esta predicción "
+                f"equivale, en la práctica, a la del límite superior observado, no a una proyección "
+                f"real de tendencia futura."
+            )
+            print(f"[ALERTA SIMULADOR] {extrapolation_warning}")
 
         total_health_reference = df_master['total_subsidized_health_affiliates'].sum()
         total_inclusion_reference = df_master['total_disabled_and_inclusion_beneficiaries'].sum()
@@ -99,7 +102,11 @@ def simulate():
         input_data = pd.DataFrame([row])[MODEL_FEATURE_COLUMNS]
 
         prediction = trained_rf.predict(input_data)[0]
-        return jsonify({'success': True, 'predicted_investment': float(prediction)})
+        return jsonify({
+            'success': True,
+            'predicted_investment': float(prediction),
+            'extrapolation_warning': extrapolation_warning
+        })
     except Exception as error:
         return jsonify({'success': False, 'error': str(error)})
 
