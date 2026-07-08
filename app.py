@@ -2,7 +2,8 @@
 
 from flask import Flask, render_template, request, jsonify
 import pandas as pd
-from data_processor import process_and_create_master_matrix, MODEL_FEATURE_COLUMNS, FEATURE_TRANSLATION
+from data_processor import (process_and_create_master_matrix, MODEL_FEATURE_COLUMNS,
+                             FEATURE_TRANSLATION, TIMELINESS_STALE_DAYS_WARNING)
 from model_trainer import train_advanced_models
 from chatbot_nlp import get_assistant_response
 
@@ -41,6 +42,8 @@ DEFAULT_SIMULATION_YEAR = MAX_SIMULATION_YEAR
 def index():
     table_data = df_master.to_dict(orient='records')
 
+    quality_scorecard = city_level_metrics.get('quality_scorecard', {})
+
     df_sorted = df_master.sort_values(by='avg_annual_investment', ascending=False)
     chart_labels = df_sorted['commune_clean'].tolist()
     chart_investment = df_sorted['avg_annual_investment'].tolist()
@@ -60,7 +63,9 @@ def index():
                            city_level_metrics=city_level_metrics,
                            min_simulation_year=MIN_SIMULATION_YEAR,
                            max_simulation_year=MAX_SIMULATION_YEAR,
-                           default_simulation_year=DEFAULT_SIMULATION_YEAR)
+                           default_simulation_year=DEFAULT_SIMULATION_YEAR,
+                           quality_scorecard=quality_scorecard,
+                           quality_stale_threshold_days=TIMELINESS_STALE_DAYS_WARNING)
 
 
 @app.route('/simulate', methods=['POST'])

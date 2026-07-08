@@ -175,6 +175,78 @@
             </div>
         </div>
 
+        <!-- Tarjeta de Calidad y Vigencia de los Datos -->
+        <div class="row mb-5">
+            <div class="col-md-12">
+                <div class="card p-3 shadow-sm">
+                    <h5 class="card-title text-secondary mb-3">🔍 Calidad y Vigencia de las Fuentes de Datos</h5>
+                    <p class="small text-muted mb-3">
+                        Scorecard calculado en cada arranque del pipeline sobre las dimensiones de
+                        completitud, unicidad, validez y oportunidad (antigüedad del dato).
+                    </p>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fuente</th>
+                                    <th class="text-center">Completitud</th>
+                                    <th class="text-center">Unicidad</th>
+                                    <th class="text-center">Validez</th>
+                                    <th class="text-center">Oportunidad (antigüedad)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            {% for source_label, dims in quality_scorecard.items() %}
+                            <tr>
+                                <td class="fw-bold">{{ source_label }}</td>
+                                <td class="text-center">
+                                    {% if dims.completitud is not none %}
+                                        {{ "{:.1f}".format(dims.completitud) }}%
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if dims.unicidad is not none %}
+                                        {{ "{:.1f}".format(dims.unicidad) }}%
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if dims.validez is not none %}
+                                        {{ "{:.1f}".format(dims.validez) }}%
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if dims.oportunidad_dias is not none %}
+                                        {% set years_old = (dims.oportunidad_dias / 365) | round(1) %}
+                                        {% if dims.oportunidad_dias > quality_stale_threshold_days %}
+                                            <span class="badge bg-danger">🔴 {{ years_old }} años</span>
+                                        {% else %}
+                                            <span class="badge bg-success">🟢 {{ years_old }} años</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">⚪ Sin fecha</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-muted mt-3 mb-0">
+                        ⚠️ Las fuentes marcadas en rojo tienen más de
+                        {{ (quality_stale_threshold_days / 365) | round(0) }} años sin actualizarse.
+                        Cualquier conclusión basada en ellas (incluida la simulación de inversión) debe
+                        tratarse como una proyección sobre datos históricos, no como el presupuesto vigente.
+                    </p>
+                </div>
+            </div>
+        </div>
+
         <!-- Tabla de Datos Consolidada -->
         <div class="card shadow-sm">
             <div class="card-header bg-dark text-white font-weight-bold fs-5">
