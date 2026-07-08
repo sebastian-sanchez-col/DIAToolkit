@@ -29,7 +29,7 @@ INVESTMENT_COLUMN_CANDIDATES = {
                         'valor_inversion', 'Valor', 'VALOR', 'Monto', 'monto'],
 }
 
-# Model feature contract shared with model_trainer.py / app.py — do not rename.
+# Model feature contract shared with model_trainer.py / app.py.
 MODEL_FEATURE_COLUMNS = [
     "health_affiliates_share",
     "inclusion_share",
@@ -172,7 +172,7 @@ def map_stratum_category(series):
 
 
 def compute_completeness(df, required_columns, label_for_log):
-    """Completitud = registros con TODOS los campos obligatorios llenos / total * 100."""
+    """Completeness = records with ALL mandatory fields filled / total * 100."""
     required_columns = [c for c in required_columns if c in df.columns]
     if not required_columns:
         return None
@@ -184,7 +184,7 @@ def compute_completeness(df, required_columns, label_for_log):
 
 
 def compute_uniqueness(df, key_columns, label_for_log):
-    """Unicidad = registros únicos / total registros * 100."""
+    """Uniqueness = unique records / total records * 100."""
     key_columns = [c for c in key_columns if c in df.columns]
     if not key_columns:
         print(f"[CALIDAD - UNICIDAD] {label_for_log}: no se definió una llave de negocio "
@@ -200,7 +200,7 @@ def compute_uniqueness(df, key_columns, label_for_log):
 
 
 def compute_validity(df, column, validator_fn, label_for_log):
-    """Validez = registros que cumplen la regla de formato/rango / total * 100."""
+    """Validity = records that meet the format/range rule / total * 100."""
     if column not in df.columns:
         return None
     valid_mask = df[column].apply(validator_fn)
@@ -224,10 +224,10 @@ def compute_consistency(cross_source_checks, label_for_log):
 
 def compute_timeliness(period_end, label_for_log, reference_date=None):
     """
-    Oportunidad = tiempo_disponibilidad - tiempo_evento.
-    Antes este proyecto NUNCA reportaba esto: los datos de inversión (2015-2018)
-    se presentaban sin advertir que, a la fecha de ejecución, tienen varios años
-    de antigüedad.
+    Timeliness = availability_time - event_time.
+    Previously, this project NEVER reported this: investment data (2015-2018)
+    was presented without warning that, as of the execution date, it is several years
+    old.
     """
     if period_end is None or pd.isna(period_end):
         print(f"[CALIDAD - OPORTUNIDAD] {label_for_log}: no se pudo determinar la fecha "
@@ -268,7 +268,7 @@ def build_quality_scorecard(datasets_config):
             'validez': compute_validity(cfg['df'], cfg.get('validity_column'),
                                         cfg.get('validity_fn', lambda x: True), label)
             if cfg.get('validity_column') else None,
-            'consistencia': None,  # se integra después en el orquestador (ver más abajo)
+            'consistencia': None,
             'oportunidad_dias': compute_timeliness(cfg.get('period_end'), label),
             'exactitud': None,
         }
@@ -735,10 +735,8 @@ def load_investment_multiyear():
 
 def load_raw_datasets():
     """Reads all raw CSV source files into memory."""
-    df_scholarship = pd.read_csv(
-        'sources/Beneficiaros_de_becas_y_creditos_de_programas_de_acceso_a_la_educación_superior_de_Antioquia_20260617.csv')
-    df_utility_subsidy = pd.read_csv(
-        'sources/Subsidios_y_Contribuciones_de_Servicios_Públicos_Domiciliarios_–_EPM_20260617.csv')
+    df_scholarship = pd.read_csv('sources/becas_creditos_educacion_superior_antioquia.csv')
+    df_utility_subsidy = pd.read_csv('sources/subsidios_contribuciones_epm_servicios.csv')
     df_subsidized_health_regime_affiliates = pd.read_csv('sources/subsidiado.csv')
     df_subsidy_and_cleaning = pd.read_csv('sources/subsidios_y_contribuciones_aseo.csv')
     df_social_inclusion_actions_for_people_with_disabilities = pd.read_csv(

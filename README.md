@@ -8,15 +8,15 @@ Integra 10 archivos CSV correspondientes a 7 fuentes de datos abiertos distintas
 
 ## Cumplimiento con la convocatoria
 
-| Requisito | Estado |
-|---|---|
-| Categoría | Innovación y Tecnología |
-| Reto | Reto 7 — Asistente virtual de acceso ciudadano a datos abiertos |
+| Requisito | Estado                                                                                                                                                                                                  |
+|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Categoría | Innovación y Tecnología                                                                                                                                                                                 |
+| Reto | Reto 7 — Asistente virtual de acceso ciudadano a datos abiertos                                                                                                                                         |
 | Nivel de complejidad (autodeclarado) | **Intermedio** — 7 fuentes de datos (≥3) repartidas en 10 archivos, ~15 variables analíticas (10-20), modelos Random Forest + KMeans, con limpieza/transformación/integración real de múltiples fuentes |
-| Componente de IA | ✅ Analítica predictiva (Random Forest), simulación de escenarios (simulador con variable de año proyectado), agente conversacional con clasificación de intención (TF-IDF + Logistic Regression) |
-| Uso de datos abiertos | ✅ 7 fuentes de datos.gov.co (10 archivos CSV) — ver tabla en [Fuentes de datos](#fuentes-de-datos) |
-| Metodología documentada | ✅ Ver [Metodología (CRISP-ML)](#metodología-crisp-ml) |
-| Historias de usuario y backlog (Scrum) | ✅ Ver [`BACKLOG.md`](./BACKLOG.md) — 30 historias en 10 épicas, 6 sprints |
+| Componente de IA | ✅ Analítica predictiva (Random Forest), simulación de escenarios (simulador con variable de año proyectado), agente conversacional con clasificación de intención (TF-IDF + Logistic Regression)        |
+| Uso de datos abiertos | ✅ 7 fuentes de datos.gov.co (10 archivos CSV) — ver tabla en [Fuentes de datos](#fuentes-de-datos)                                                                                                      |
+| Metodología documentada | ✅ Ver [Metodología (CRISP-ML)](#metodología-crisp-ml)                                                                                                                                                   |
+| Historias de usuario y backlog (Scrum) | ✅ Ver [`BACKLOG.md`](./BACKLOG.md) — 25 historias en 10 épicas, 6 sprints                                                                                                                               |
 
 ## Project Team
 
@@ -69,7 +69,7 @@ el proyecto documenta su alcance como un backlog de historias de usuario con
 formato estándar (`Como / quiero / para`) y criterios de aceptación
 verificables, organizado en épicas y sprints.
 
-Ver el detalle completo en [`BACKLOG.md`](./BACKLOG.md) — 30 historias de
+Ver el detalle completo en [`BACKLOG.md`](./BACKLOG.md) — 25 historias de
 usuario distribuidas en 10 épicas (inversión territorial, subsidios, salud,
 inclusión social, becas, modelo predictivo, chatbot, calidad de datos,
 consumo de APIs y dashboard) y un plan de 6 sprints.
@@ -87,19 +87,27 @@ subsidiado, aseo, inclusión/discapacidad y EPM directos) se leen **únicamente 
 no tienen integración con la API todavía. Esto se documenta como limitación conocida del alcance 
 actual (Sprint 2), no como funcionalidad ya cubierta.
 
-| Dataset | Archivo local | Ficha en datos.gov.co                                                                                                                                                                                       |
-|---|---|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Inversión por comunas y corregimientos 2015 | `sources/inversion_por_comunas_y_corregimientos_2015_medellin.csv` | [Inversión por comuna y corregimiento Medellín 2015](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2015/2enc-enmu/about_data)                                              |
-| Inversión por comunas y corregimientos 2016 | `sources/inversion_por_comunas_y_corregimientos_2016_medellin.csv` | [Inversión por comuna y corregimiento Medellín 2016](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2016/3y4s-qt57/about_data)                                              |
-| Inversión por comunas y corregimientos 2017 | `sources/inversion_por_comunas_y_corregimientos_2017_medellin.csv` | [Inversión por comuna y corregimiento Medellín 2017](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2017/3e4c-pzjq/about_data)                                              |
-| Inversión por comunas y corregimientos 2018 | `sources/inversion_por_comunas_y_corregimientos_2018.csv` | [Inversión por comuna y corregimiento Medellín 2018](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2018/uyrj-ehja)                                                         |
-| Beneficiarios de becas y créditos educación superior (Antioquia) | `sources/Beneficiaros_de_becas_y_creditos_...csv` | [Beneficiarios de becas y créditos de programas de acceso a la educación superior de Antioquia](https://www.datos.gov.co/Educaci-n/Beneficiaros-de-becas-y-creditos-de-programas-de-a/ya7f-466y/about_data) |
-| Subsidios y Contribuciones EPM (servicios públicos) | `sources/Subsidios_y_Contribuciones_..._EPM_...csv` | [Subsidios y Contribuciones de Servicios Públicos Domiciliarios – EPM](https://www.datos.gov.co/Minas-y-Energ-a/Subsidios-y-Contribuciones-de-Servicios-P-blicos-D/av6t-m6ju/about_data)                    |
-| Régimen subsidiado (salud) | `sources/subsidiado.csv` | [Afiliados al régimen subsidiado de Medellín](https://www.datos.gov.co/en/dataset/Afiliados-al-r-gimen-subsidiado-de-Medell-n/n7qb-ahpa/about_data)                                                         |
-| Subsidios y Contribuciones Aseo | `sources/subsidios_y_contribuciones_aseo.csv` | [Subsidios y contribuciones aseo](https://www.datos.gov.co/dataset/Subsidios-y-contribuciones-aseo/db2v-e8wa/about_data)                                                                                    |
-| Implementación de acciones de inclusión/discapacidad | `sources/implementacion_acciones_personas_discapacidad_...csv` | [Implementación de acciones de inclusión social para personas con discapacidad](https://www.datos.gov.co/dataset/Implementaci-n-de-acciones-de-inclusi-n-social-par/hdjq-kape/about_data)                   |
-| Subsidios y Contribuciones EPM (directos) | `sources/subsidio_contribuciones_epm.csv` | [Subsidios y Contribuciones EPM Energía Gas Acueducto](https://www.datos.gov.co/dataset/Subsidios-y-Contribuciones-EPM-Energ-a-Gas-Acueduc/dag3-4sey/about_data)                                                                                                                                                                                                            |
+| Dataset | Archivo local | Ficha en datos.gov.co |
+|---|---|---|
+| Inversión por comunas y corregimientos 2015 | `sources/inversion_por_comunas_y_corregimientos_2015_medellin.csv` | [Inversión por comuna y corregimiento Medellín 2015](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2015/2enc-enmu/about_data) |
+| Inversión por comunas y corregimientos 2016 | `sources/inversion_por_comunas_y_corregimientos_2016_medellin.csv` | [Inversión por comuna y corregimiento Medellín 2016](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2016/3y4s-qt57/about_data) |
+| Inversión por comunas y corregimientos 2017 | `sources/inversion_por_comunas_y_corregimientos_2017_medellin.csv` | [Inversión por comuna y corregimiento Medellín 2017](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2017/3e4c-pzjq/about_data) |
+| Inversión por comunas y corregimientos 2018 | `sources/inversion_por_comunas_y_corregimientos_2018.csv` | [Inversión por comuna y corregimiento Medellín 2018](https://www.datos.gov.co/dataset/Inversi-n-por-comuna-y-corregimiento-Medell-n-2018/uyrj-ehja) |
+| Beneficiarios de becas y créditos educación superior (Antioquia) | `sources/becas_creditos_educacion_superior_antioquia.csv` ⚠️ *renombrar tras descargar — ver nota abajo* | [Beneficiarios de becas y créditos de programas de acceso a la educación superior de Antioquia](https://www.datos.gov.co/Educaci-n/Beneficiaros-de-becas-y-creditos-de-programas-de-a/ya7f-466y/about_data) |
+| Subsidios y Contribuciones EPM (servicios públicos) | `sources/subsidios_contribuciones_epm_servicios.csv` ⚠️ *renombrar tras descargar — ver nota abajo* | [Subsidios y Contribuciones de Servicios Públicos Domiciliarios – EPM](https://www.datos.gov.co/Minas-y-Energ-a/Subsidios-y-Contribuciones-de-Servicios-P-blicos-D/av6t-m6ju/about_data) |
+| Régimen subsidiado (salud) | `sources/subsidiado.csv` | [Afiliados al régimen subsidiado de Medellín](https://www.datos.gov.co/en/dataset/Afiliados-al-r-gimen-subsidiado-de-Medell-n/n7qb-ahpa/about_data) |
+| Subsidios y Contribuciones Aseo | `sources/subsidios_y_contribuciones_aseo.csv` | [Subsidios y contribuciones aseo](https://www.datos.gov.co/dataset/Subsidios-y-contribuciones-aseo/db2v-e8wa/about_data) |
+| Implementación de acciones de inclusión/discapacidad | `sources/implementacion_acciones_personas_discapacidad_...csv` | [Implementación de acciones de inclusión social para personas con discapacidad](https://www.datos.gov.co/dataset/Implementaci-n-de-acciones-de-inclusi-n-social-par/hdjq-kape/about_data) |
+| Subsidios y Contribuciones EPM (directos) | `sources/subsidio_contribuciones_epm.csv` | [Subsidios y Contribuciones EPM Energía Gas Acueducto](https://www.datos.gov.co/dataset/Subsidios-y-Contribuciones-EPM-Energ-a-Gas-Acueduc/dag3-4sey/about_data) |
 
+⚠️ **Nota sobre nombres con fecha de exportación:** los archivos de "Beneficiarios de becas y 
+créditos" y "Subsidios y Contribuciones EPM (servicios públicos)" se exportan desde datos.gov.co 
+con la fecha de descarga incluida en el nombre (ej. `..._20260708.csv`). Ese sufijo cambia según 
+el día en que descargues el archivo, por lo que **no** coincidirá con el nombre fijo que espera 
+`load_raw_datasets()` en `data_processor.py`. Debes renombrar el archivo descargado al nombre 
+estable indicado en la tabla (`becas_creditos_educacion_superior_antioquia.csv` y 
+`subsidios_contribuciones_epm_servicios.csv`, respectivamente) antes de colocarlo en `sources/`, 
+o actualizar `load_raw_datasets()` para que apunte al nombre real que descargaste.
 ## Variables analíticas del proyecto
 
 El proyecto integra 15 variables analíticas derivadas de las 7 fuentes de datos, dentro del
@@ -147,7 +155,7 @@ niveles según dónde se usan:
 1. Clonar el repositorio:
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/sebastian-sanchez-col/DIAToolkit.git
 cd DIAToolkit
 ```
 
@@ -168,6 +176,25 @@ venv\Scripts\activate
 ```bash
 pip install -r requirements.txt
 ```
+4. Descargar las fuentes de datos:
+
+   Este proyecto **no incluye los archivos CSV** de origen (no se versionan por tamaño).
+   Antes de ejecutar la aplicación debes:
+
+   - Crear una carpeta llamada `sources/` en la raíz del proyecto (si no existe).
+   - Descargar cada uno de los 10 archivos CSV listados en la tabla
+     [Fuentes de datos](#fuentes-de-datos) desde su ficha en datos.gov.co.
+   - Guardarlos dentro de `sources/` usando **exactamente** el nombre de archivo
+     indicado en esa tabla (los nombres deben coincidir con `INVESTMENT_FILES_BY_YEAR`
+     y `load_raw_datasets()` en `data_processor.py`).
+   - ⚠️ Para "Beneficiarios de becas y créditos" y "Subsidios y Contribuciones EPM
+     (servicios públicos)": el archivo exportado desde datos.gov.co trae la fecha de
+     descarga en el nombre (ej. `..._20260708.csv`). Renómbralo al nombre estable
+     indicado en la tabla antes de colocarlo en `sources/`, o el pipeline no lo
+     encontrará.
+   
+
+   Sin este paso, `python app.py` lanzará `FileNotFoundError` al arrancar.
 
 ## Running the Application
 
@@ -212,6 +239,17 @@ Estas decisiones están documentadas también como logs en consola durante el ar
   Extender el mismo patrón de `fetch_dataset_from_api` a becas, EPM servicios, régimen subsidiado, 
   aseo, inclusión/discapacidad y EPM directos queda pendiente; hoy esas 6 fuentes dependen 
   exclusivamente del CSV local en `sources/`.
+* **Nombres de archivo con fecha de exportación (becas y EPM servicios)**: los archivos
+  `Beneficiaros_de_becas_y_creditos_..._20260708.csv` y
+  `Subsidios_y_Contribuciones_..._EPM_..._20260708.csv` incluyen la fecha en que fueron
+  exportados desde datos.gov.co (`20260708`), no un identificador estable del dataset. Si
+  descargas estos dos archivos hoy, el sufijo de fecha será distinto y **no coincidirá** con
+  el nombre esperado por `load_raw_datasets()` en `data_processor.py`, causando
+  `FileNotFoundError` al arrancar. Antes de ejecutar el proyecto, renombra ambos archivos a
+  un nombre estable sin fecha (por ejemplo `becas_creditos_educacion_superior_antioquia.csv`
+  y `subsidios_contribuciones_epm_servicios.csv`) y actualiza las dos líneas `pd.read_csv(...)`
+  correspondientes en `load_raw_datasets()` para que apunten a esos nombres. Pendiente:
+  actualizar también la tabla de "Fuentes de datos" más abajo con los nombres finales elegidos.
 
 ## Project Structure
 
