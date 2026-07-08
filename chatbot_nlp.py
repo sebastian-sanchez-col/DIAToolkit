@@ -94,15 +94,6 @@ class IntentClassifier:
                 labels.append(intent)
         return texts, labels
 
-    def classify(self, text):
-        vector = self._vectorizer.transform([text.lower().strip()])
-        probabilities = self._model.predict_proba(vector)[0]
-        best_idx = np.argmax(probabilities)
-        confidence = probabilities[best_idx]
-        if confidence < self._confidence_threshold:
-            return UNKNOWN_INTENT
-        return self._model.classes_[best_idx]
-
     def classify_with_confidence(self, text):
         """Returns (intent, confidence) instead of just the intent, in order to
         expose the uncertainty to the user instead of hiding it."""
