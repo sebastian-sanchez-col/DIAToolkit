@@ -16,6 +16,7 @@ Integra 10 archivos CSV correspondientes a 7 fuentes de datos abiertos distintas
 | Componente de IA | ✅ Analítica predictiva (Random Forest), simulación de escenarios (simulador con variable de año proyectado), agente conversacional con clasificación de intención (TF-IDF + Logistic Regression) |
 | Uso de datos abiertos | ✅ 7 fuentes de datos.gov.co (10 archivos CSV) — ver tabla en [Fuentes de datos](#fuentes-de-datos) |
 | Metodología documentada | ✅ Ver [Metodología (CRISP-ML)](#metodología-crisp-ml) |
+| Historias de usuario y backlog (Scrum) | ✅ Ver [`BACKLOG.md`](./BACKLOG.md) — 30 historias en 10 épicas, 6 sprints |
 
 ## Project Team
 
@@ -60,6 +61,18 @@ El desarrollo siguió el ciclo CRISP-ML(Q):
 5. **Evaluation:** validación GroupKFold agrupada por comuna (para medir generalización real a territorio no visto, no solo a años no vistos de la misma comuna) y diagnóstico de dependencia parcial (PDP) para detectar relaciones espurias o inestables por bajo N.
 6. **Deployment:** aplicación Flask con dashboard interactivo, simulador y chatbot, ejecutable localmente (`python app.py`).
 7. **Monitoring:** el pipeline reimprime todos los diagnósticos de calidad en cada arranque (`[DIAGNÓSTICO ...]`, `[ALERTA ...]`), funcionando como un chequeo de salud de los datos cada vez que cambian las fuentes.
+
+## Historias de Usuario y Backlog (Metodología Scrum)
+
+Siguiendo la metodología Scrum enseñada en la capacitación correspondiente,
+el proyecto documenta su alcance como un backlog de historias de usuario con
+formato estándar (`Como / quiero / para`) y criterios de aceptación
+verificables, organizado en épicas y sprints.
+
+Ver el detalle completo en [`BACKLOG.md`](./BACKLOG.md) — 30 historias de
+usuario distribuidas en 10 épicas (inversión territorial, subsidios, salud,
+inclusión social, becas, modelo predictivo, chatbot, calidad de datos,
+consumo de APIs y dashboard) y un plan de 6 sprints.
 
 ## Fuentes de datos
 

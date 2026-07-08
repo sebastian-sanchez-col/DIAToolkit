@@ -1,13 +1,17 @@
 # data_processor.py
 
 import re
+
 import unicodedata
 import numpy as np
 import pandas as pd
+from datos_gov_api import load_investment_year_with_api_fallback
+from datetime import date
 
 # ---------------------------------------------------------------------------
 # Configuration constants
 # ---------------------------------------------------------------------------
+
 
 INVESTMENT_UNIT_MULTIPLIER_DEFAULT = 1_000_000
 
@@ -15,6 +19,15 @@ CLEANING_COLUMN_CANDIDATES = [
     'MUNICIPIO DE RESIDENCIA', 'municipio_de_residencia', 'Municipio de Residencia',
     'municipio_o_sector', 'Municipio o Sector', 'municipio', 'Municipio', 'MUNICIPIO',
 ]
+
+RAW_DATASET_SOCRATA_IDS = {
+    'scholarship': 'ya7f-466y',
+    'utility_subsidy': 'av6t-m6ju',
+    'health_regime_affiliates': 'n7qb-ahpa',
+    'cleaning_subsidy': 'db2v-e8wa',
+    'inclusion_disability': 'hdjq-kape',
+    'epm_direct_subsidy': 'dag3-4sey',
+}
 
 INVESTMENT_FILES_BY_YEAR = {
     2015: 'sources/inversion_por_comunas_y_corregimientos_2015_medellin.csv',
@@ -82,9 +95,21 @@ MEDELLIN_TERRITORIES = [
     '80 - SAN ANTONIO DE PRADO', '90 - SANTA ELENA'
 ]
 
+INVESTMENT_FILES_BY_YEAR = {
+    2015: ('sources/inversion_por_comunas_y_corregimientos_2015_medellin.csv', '2enc-enmu'),
+    2016: ('sources/inversion_por_comunas_y_corregimientos_2016_medellin.csv', '3y4s-qt57'),
+    2017: ('sources/inversion_por_comunas_y_corregimientos_2017_medellin.csv', '3e4c-pzjq'),
+    2018: ('sources/inversion_por_comunas_y_corregimientos_2018.csv', 'uyrj-ehja'),
+}
+
 REFERENCE_STRATUM_FALLBACK = 2.4
 CLEANING_SUBSCRIBERS_POPULATION_REFERENCE = 2_600_000  # approx. population of Medellín
 
+# ---------------------------------------------------------------------------
+# Data Quality Scorecard (6 formal dimensions, per the Data Quality session)
+# ---------------------------------------------------------------------------
+
+TIMELINESS_STALE_DAYS_WARNING = 365 * 2
 
 # ---------------------------------------------------------------------------
 # Generic text utilities
@@ -159,6 +184,94 @@ def map_stratum_category(series):
     """Normalizes and maps string-based stratum descriptions to numbers."""
     normalized = series.astype(str).str.upper().str.strip()
     return normalized.map(STRATUM_CATEGORY_TO_NUMBER)
+
+
+
+def compute_completeness(df, required_columns, label_for_log):
+    """Completitud = registros con TODOS los campos obligatorios llenos / total * 100."""
+    required_columns = [c for c in required_columns if c in df.columns]
+    if not required_columns:
+        return None
+    filled_mask = df[required_columns].notna().all(axis=1)
+    score = filled_mask.mean() * 100
+    print(f"[CALIDAD - COMPLETITUD] {label_for_log}: {score:.1f}% de filas con todos los "
+          f"campos obligatorios {required_columns} diligenciados.")
+    return score
+
+
+def compute_uniqueness(df, key_columns, label_for_log):
+    """Unicidad = registros únicos / total registros * 100."""
+    key_columns = [c for c in key_columns if c in df.columns]
+    if not key_columns:
+        print(f"[CALIDAD - UNICIDAD] {label_for_log}: no se definió una llave de negocio "
+              f"confiable para este dataset; se omite esta dimensión (la deduplicación de "
+              f"filas exactas ya se cubre en la etapa de purga general).")
+        return None
+    total = len(df)
+    unique = df.drop_duplicates(subset=key_columns).shape[0]
+    score = (unique / total * 100) if total else 0
+    print(f"[CALIDAD - UNICIDAD] {label_for_log}: {score:.1f}% de registros únicos "
+          f"sobre llave {key_columns}.")
+    return score
+
+
+def compute_validity(df, column, validator_fn, label_for_log):
+    """Validez = registros que cumplen la regla de formato/rango / total * 100."""
+    if column not in df.columns:
+        return None
+    valid_mask = df[column].apply(validator_fn)
+    score = valid_mask.mean() * 100
+    print(f"[CALIDAD - VALIDEZ] {label_for_log}: {score:.1f}% de '{column}' cumple "
+          f"la regla de negocio esperada.")
+    return score
+
+
+def compute_timeliness(period_end, label_for_log, reference_date=None):
+    """
+    Oportunidad = tiempo_disponibilidad - tiempo_evento.
+    Antes este proyecto NUNCA reportaba esto: los datos de inversión (2015-2018)
+    se presentaban sin advertir que, a la fecha de ejecución, tienen varios años
+    de antigüedad.
+    """
+    if period_end is None or pd.isna(period_end):
+        print(f"[CALIDAD - OPORTUNIDAD] {label_for_log}: no se pudo determinar la fecha "
+              f"del dato más reciente.")
+        return None
+
+    reference_date = reference_date or pd.Timestamp(date.today())
+    staleness_days = (reference_date - period_end).days
+
+    print(f"[CALIDAD - OPORTUNIDAD] {label_for_log}: el dato más reciente es de "
+          f"{period_end.date()}, es decir {staleness_days} días de antigüedad respecto "
+          f"a hoy ({reference_date.date()}).")
+
+    if staleness_days > TIMELINESS_STALE_DAYS_WARNING:
+        print(f"  ⚠️ ALERTA DE OPORTUNIDAD: {label_for_log} tiene más de "
+              f"{TIMELINESS_STALE_DAYS_WARNING // 365} años sin actualizarse. "
+              f"Cualquier conclusión o simulación basada en esta fuente debe advertir "
+              f"al usuario final que está usando datos históricos, no vigentes.")
+    return staleness_days
+
+
+def build_quality_scorecard(datasets_config):
+    """
+    datasets_config: lista de dicts, cada uno con:
+      {'df':..., 'label':..., 'required_cols':[...], 'key_cols':[...],
+       'validity_column':..., 'validity_fn':..., 'period_end':...}
+    Imprime y retorna un resumen consolidado de las 6 dimensiones por dataset.
+    """
+    scorecard = {}
+    for cfg in datasets_config:
+        label = cfg['label']
+        scorecard[label] = {
+            'completitud': compute_completeness(cfg['df'], cfg.get('required_cols', []), label),
+            'unicidad': compute_uniqueness(cfg['df'], cfg.get('key_cols', []), label),
+            'validez': compute_validity(cfg['df'], cfg.get('validity_column'),
+                                         cfg.get('validity_fn', lambda x: True), label)
+                       if cfg.get('validity_column') else None,
+            'oportunidad_dias': compute_timeliness(cfg.get('period_end'), label),
+        }
+    return scorecard
 
 
 # ---------------------------------------------------------------------------
@@ -561,13 +674,18 @@ def diagnostic_and_dedupe_by_period(df, label_for_log, key_columns_override,
 # Loaders
 # ---------------------------------------------------------------------------
 
-def load_investment_year(path, year):
+def load_investment_year(path, year, dataset_id=None):
     """Loads and normalizes raw investment data for a specific year."""
-    try:
-        df = pd.read_csv(path)
-    except FileNotFoundError:
-        print(f"[ALERTA INVERSIÓN {year}] No se encontró el archivo '{path}'. Se omite ese año.")
-        return None
+
+    if dataset_id:
+        df, source_used = load_investment_year_with_api_fallback(dataset_id, path, year)
+        print(f"[FUENTE INVERSIÓN {year}] Origen de los datos: {source_used}")
+    else:
+        try:
+            df = pd.read_csv(path)
+        except FileNotFoundError:
+            print(f"[ALERTA INVERSIÓN {year}] No se encontró el archivo '{path}'. Se omite ese año.")
+            return None
 
     name_col = find_column(df, INVESTMENT_COLUMN_CANDIDATES['comuna_name'])
     if name_col is None:
@@ -599,8 +717,8 @@ def load_investment_year(path, year):
 def load_investment_multiyear():
     """Aggregates multi-year investment records into a single multi-year dataset."""
     yearly_dataframes = []
-    for year, path in sorted(INVESTMENT_FILES_BY_YEAR.items()):
-        df_year = load_investment_year(path, year)
+    for year, (path, dataset_id) in sorted(INVESTMENT_FILES_BY_YEAR.items()):
+        df_year = load_investment_year(path, year, dataset_id=dataset_id)
         if df_year is not None:
             yearly_dataframes.append(df_year)
 
@@ -614,17 +732,34 @@ def load_investment_multiyear():
     return df_investment_multiyear, available_years
 
 
+def _load_dataset_with_fallback(key, local_csv_path):
+    """Same pattern used in investment: tries the API; if it fails, uses the local CSV."""
+    dataset_id = RAW_DATASET_SOCRATA_IDS.get(key)
+    if dataset_id:
+        df, source_used = load_investment_year_with_api_fallback(dataset_id, local_csv_path, year=None)
+        print(f"[FUENTE {key.upper()}] Origen de los datos: {source_used}")
+        if df is not None:
+            return df
+    return pd.read_csv(local_csv_path)
+
+
 def load_raw_datasets():
-    """Reads all raw CSV source files into memory."""
-    df_scholarship = pd.read_csv(
+    """Reads all raw source datasets, trying the API first and falling back to local CSV."""
+    df_scholarship = _load_dataset_with_fallback(
+        'scholarship',
         'sources/Beneficiaros_de_becas_y_creditos_de_programas_de_acceso_a_la_educación_superior_de_Antioquia_20260617.csv')
-    df_utility_subsidy = pd.read_csv(
+    df_utility_subsidy = _load_dataset_with_fallback(
+        'utility_subsidy',
         'sources/Subsidios_y_Contribuciones_de_Servicios_Públicos_Domiciliarios_–_EPM_20260617.csv')
-    df_subsidized_health_regime_affiliates = pd.read_csv('sources/subsidiado.csv')
-    df_subsidy_and_cleaning = pd.read_csv('sources/subsidios_y_contribuciones_aseo.csv')
-    df_social_inclusion_actions_for_people_with_disabilities = pd.read_csv(
+    df_subsidized_health_regime_affiliates = _load_dataset_with_fallback(
+        'health_regime_affiliates', 'sources/subsidiado.csv')
+    df_subsidy_and_cleaning = _load_dataset_with_fallback(
+        'cleaning_subsidy', 'sources/subsidios_y_contribuciones_aseo.csv')
+    df_social_inclusion_actions_for_people_with_disabilities = _load_dataset_with_fallback(
+        'inclusion_disability',
         'sources/implementacion_acciones_personas_discapacidad_familiares_cuidadores_2023.csv')
-    df_epm_subsidies_contributions = pd.read_csv('sources/subsidio_contribuciones_epm.csv')
+    df_epm_subsidies_contributions = _load_dataset_with_fallback(
+        'epm_direct_subsidy', 'sources/subsidio_contribuciones_epm.csv')
 
     return (df_scholarship, df_utility_subsidy, df_subsidized_health_regime_affiliates,
             df_subsidy_and_cleaning, df_social_inclusion_actions_for_people_with_disabilities,
@@ -836,7 +971,7 @@ def _build_city_level_metrics(df_utility_subsidy, df_epm_subsidies_contributions
                                code_99_count, total_health_rows,
                                cleaning_period_info, utility_period_info, epm_direct_period_info,
                                subsidies_periods_aligned, subsidies_period_max_diff_days,
-                               epm_subsidies_confirmed_duplicate):
+                               epm_subsidies_confirmed_duplicate, quality_scorecard):
     """Assembles the dictionary of city-wide (non-territorial) metrics."""
     return {
         'total_epm_utility_subsidy_medellin': float(df_utility_subsidy['valor'].sum()),
@@ -854,6 +989,7 @@ def _build_city_level_metrics(df_utility_subsidy, df_epm_subsidies_contributions
         'subsidies_periods_aligned': subsidies_periods_aligned,
         'subsidies_period_max_diff_days': subsidies_period_max_diff_days,
         'epm_subsidies_confirmed_duplicate_source': epm_subsidies_confirmed_duplicate,
+        'quality_scorecard': quality_scorecard
     }
 
 def _build_territorial_aggregates(df_investment_multiyear, df_subsidized_health_regime_affiliates,
@@ -997,6 +1133,39 @@ def process_and_create_master_matrix():
      cleaning_period_info, utility_period_info, epm_direct_period_info) = _dedupe_city_subsidies_by_period(
         df_subsidy_and_cleaning, df_utility_subsidy, df_epm_subsidies_contributions)
 
+    print("Calculando scorecard de calidad de datos (6 dimensiones)...")
+    investment_period_end = pd.Timestamp(year=max(available_years), month=12, day=31)
+    quality_scorecard = build_quality_scorecard([
+        {
+            'df': df_investment_multiyear, 'label': 'Inversión multi-año',
+            'required_cols': ['commune_clean', 'investment_value', 'year'],
+            'key_cols': [],
+            'period_end': investment_period_end,
+        },
+        {
+            'df': df_subsidized_health_regime_affiliates, 'label': 'Régimen subsidiado (salud)',
+            'required_cols': ['comuna', 'edad'],
+            'key_cols': ['consecutivo'],
+            'validity_column': 'edad',
+            'validity_fn': lambda x: 0 <= x <= 105,
+        },
+        {
+            'df': df_utility_subsidy, 'label': 'Subsidios EPM servicios',
+            'required_cols': ['valor', 'estrato'],
+            'key_cols': [c for c in
+                         ['Tipo de subsidio', 'Departamento', 'Municipio o Sector',
+                          '_raw_stratum_category', 'servicio', 'tipo', 'año', 'Mes']
+                         if c in df_utility_subsidy.columns],
+            'period_end': utility_period_info.get('period_max'),
+        },
+        {
+            'df': df_subsidy_and_cleaning, 'label': 'Subsidios Aseo',
+            'required_cols': ['total_subsidio', 'suscriptores_subsidiados'],
+            'key_cols': ['prestador'],
+            'period_end': cleaning_period_info.get('period_max'),
+        },
+    ])
+
     df_subsidy_and_cleaning['suscriptores_subsidiados'] = pd.to_numeric(
         df_subsidy_and_cleaning['suscriptores_subsidiados'], errors='coerce').fillna(0).astype(int)
 
@@ -1047,7 +1216,8 @@ def process_and_create_master_matrix():
         code_99_count, total_health_rows,
         cleaning_period_info, utility_period_info, epm_direct_period_info,
         subsidies_periods_aligned, subsidies_period_max_diff_days,
-        epm_subsidies_confirmed_duplicate)
+        epm_subsidies_confirmed_duplicate,
+        quality_scorecard)
     print(f"[MÉTRICAS DE CIUDAD] {city_level_metrics}")
 
     _log_scholarship_methodology_decision(total_scholarship_before_filter, total_scholarship_medellin)
