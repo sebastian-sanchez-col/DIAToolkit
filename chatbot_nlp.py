@@ -7,7 +7,7 @@ from sklearn.linear_model import LogisticRegression
 
 from data_processor import FEATURE_TRANSLATION
 
-CONFIDENCE_THRESHOLD = 0.35
+CONFIDENCE_THRESHOLD = 0.25
 UNKNOWN_INTENT = "desconocido"
 
 TRAINING_DATA = {
@@ -18,29 +18,42 @@ TRAINING_DATA = {
     "inversion": [
         "cuanta plata se invirtio", "presupuesto de comunas", "inversion publica",
         "gasto", "dinero", "ejecucion presupuestal", "recursos invertidos",
-        "cuanto dinero recibio la comuna", "inversion por territorio", "comuna",
-        "territorio", "mayor", "maximo", "menor", "minimo",
-        "mayor inversion", "menor inversion"
+        "cuanto dinero recibio la comuna", "inversion por territorio",
+        "mayor inversion", "menor inversion", "comuna con mayor inversion",
+        "comuna con menor inversion", "cual comuna recibio mas inversion",
+        "cual comuna recibio menos inversion", "zona con mas inversion",
+        "zona con menos inversion", "en que comuna se invirtio mas",
+        "en que comuna se invirtio menos"
     ],
     "subsidios": [
         "que subsidios hay", "ayuda de servicios publicos", "aseo y energia",
         "quien recibe subsidio", "fondos globales", "total combinado",
         "ayudas economicas", "subsidio de epm", "subsidio de aseo",
-        "corregimiento"
+        "corregimiento", "cuanto subsidio se dio en total",
+        "total de subsidios de servicios publicos"
     ],
     "estrato": [
         "cual es el estrato promedio", "nivel socioeconomico", "estratificacion de medellin",
         "capacidad socioeconomica", "estratos por comuna", "cual es el estrato real",
-        "que estrato tiene la zona", "estrato mas bajo", "estrato socioeconomico"
+        "que estrato tiene la zona", "estrato mas bajo", "estrato socioeconomico",
+        "cual es el estrato promedio de las comunas", "estrato promedio de las comunas",
+        "cual es el estrato promedio por comuna", "promedio de estrato",
+        "que estrato tienen las comunas", "estrato promedio de medellin"
     ],
     "promedio": [
         "promedio general", "media de subsidios", "cuanto es el promedio",
-        "total promedio", "promedio global asignado", "media"
+        "total promedio", "promedio global asignado", "media",
+        "cual es la inversion promedio", "cual es el promedio de inversion"
     ],
     "modelo_ml": [
         "como funciona el modelo", "que predictor es el mas importante",
         "random forest", "importancia de caracteristicas", "feature importance",
-        "que variable pondera mas", "prediccion", "variable", "importancia", "ia"
+        "que variable pondera mas", "prediccion", "variable", "importancia", "ia",
+        "que variable es la mas importante", "cual es la variable mas importante",
+        "que variable es la mas importante para la ia",
+        "cual es la variable mas importante para la ia",
+        "que tan importante es cada variable", "que variable pesa mas en el modelo",
+        "cual variable explica mejor la inversion"
     ],
     "becas": [
         "cuantos beneficiarios de becas hay", "becas y creditos", "acceso a educacion superior",

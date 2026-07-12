@@ -975,14 +975,35 @@ def _build_city_level_metrics(df_utility_subsidy, df_epm_subsidies_contributions
     }
 
 def _build_territorial_aggregates(df_investment_multiyear, df_subsidized_health_regime_affiliates,
-                                   df_social_inclusion_actions_for_people_with_disabilities):
+                                   df_social_inclusion_actions_for_people_with_disabilities,
+                                   available_years):
     """Builds the per-commune (and per-commune-year) aggregated metrics."""
     investment_panel = df_investment_multiyear.groupby(['commune_clean', 'year']).agg(
         total_investment=('investment_value', 'sum')).reset_index()
 
-    investment_display = investment_panel.groupby('commune_clean').agg(
+    # NOTA METODOLÓGICA (confirmado con diagnóstico de fila, no es un bug): los
+    # corregimientos rurales (50-90) suelen mostrar 'avg_annual_investment' alto
+    # pese a tener poca población/afiliados, porque este indicador es INVERSIÓN
+    # TOTAL, no per cápita. Un solo proyecto de infraestructura rural (vía,
+    # acueducto veredal) cuesta un monto similar sin importar cuánta gente lo usa,
+    # y hay pocos proyectos por año en estos territorios, por lo que cada uno pesa
+    # más en el promedio. Se verificó fila por fila que el nombre crudo de la
+    # comuna en el CSV corresponde exactamente al corregimiento correcto (no es
+    # un error de matching) y que las 21 comunas/corregimientos tienen los 4 años
+    # de dato real (el único registro con menos años era 'UNKNOWN', que no entra
+    # a la matriz final). No comparar este indicador 1:1 contra comunas urbanas
+    # como medida de equidad sin ajustar por población.
+    full_year_index = pd.MultiIndex.from_product(
+        [MEDELLIN_TERRITORIES, available_years], names=['commune_clean', 'year']
+    ).to_frame(index=False)
+    investment_panel_filled = pd.merge(
+        full_year_index, investment_panel, on=['commune_clean', 'year'], how='left')
+    investment_panel_filled['total_investment'] = investment_panel_filled['total_investment'].fillna(0)
+
+    investment_display = investment_panel_filled.groupby('commune_clean').agg(
         avg_annual_investment=('total_investment', 'mean'),
-        n_years_with_data=('year', 'nunique')).reset_index()
+        n_years_with_data=('total_investment', lambda s: int((s > 0).sum()))
+    ).reset_index()
 
     health_aggregate = df_subsidized_health_regime_affiliates.groupby('commune_clean').agg(
         total_subsidized_health_affiliates=('consecutivo', 'count'),
@@ -1000,26 +1021,6 @@ def _build_territorial_aggregates(df_investment_multiyear, df_subsidized_health_
         inclusion_aggregate['total_disabled_and_inclusion_beneficiaries'].sum()
     )
 
-    # METHODOLOGICAL NOTE (FYI, requires no immediate action):
-    # 'mean_utility_stratum' -- one of the 4 actual variables feeding
-    # the model, see MODEL_FEATURE_COLUMNS -- is calculated here from
-    # 'ESTRATO SOCIOECONÓMICO' within the inclusion and disability dataset
-    # (df_social_inclusion_actions_for_people_with_disabilities), which only
-    # covers 8,021 rows across the entire city. It is NOT calculated from the
-    # EPM dataset (df_utility_subsidy), which has a much larger subscriber
-    # base and would theoretically be a more representative source of the
-    # "true" stratum per commune.
-    #
-    # The EPM data is used, but only as a fallback (see reference_global_stratum
-    # in process_and_create_master_matrix) for communes with missing inclusion/disability
-    # data -- meaning two different sources feed the same concept depending on the case.
-    #
-    # This is not an error, but it is a known limitation: coming from a
-    # small and specific subsample (disability program beneficiaries), the
-    # average stratum per commune may be noisy or unrepresentative of the
-    # commune as a whole. This is a potential partial explanation for the
-    # non-monotonic effect that the PDP diagnosis in model_trainer.py
-    # (diagnostic_partial_dependence_stratum) already reports for this variable.
     stratum_aggregate = df_social_inclusion_actions_for_people_with_disabilities.groupby('commune_clean').agg(
         mean_utility_stratum=('ESTRATO SOCIOECONÓMICO', 'mean')).reset_index()
 
@@ -1176,7 +1177,8 @@ def process_and_create_master_matrix():
     (investment_panel, investment_display, health_aggregate,
      inclusion_aggregate, stratum_aggregate) = _build_territorial_aggregates(
         df_investment_multiyear, df_subsidized_health_regime_affiliates,
-        df_social_inclusion_actions_for_people_with_disabilities)
+        df_social_inclusion_actions_for_people_with_disabilities,
+        available_years)
 
     total_scholarship_medellin = len(df_scholarship)
 

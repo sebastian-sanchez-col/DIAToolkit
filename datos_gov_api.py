@@ -1,11 +1,14 @@
+# datos_gov_api.py
+
 import pandas as pd
 import requests
+import os
 
 SOCRATA_BASE_URL = "https://www.datos.gov.co/resource/{dataset_id}.json"
 DEFAULT_PAGE_SIZE = 5000
 REQUEST_TIMEOUT_SECONDS = 15
 
-SOCRATA_APP_TOKEN = None #os.environ.get("SOCRATA_APP_TOKEN")
+SOCRATA_APP_TOKEN = os.environ.get("SOCRATA_APP_TOKEN")
 
 REQUEST_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; DIAToolkit/1.0; +https://github.com/sebastian-sanchez-col/DIAToolkit)",

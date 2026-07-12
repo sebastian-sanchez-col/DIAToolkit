@@ -305,7 +305,7 @@ en cada arranque
 | Sprint 2 | Calidad de datos formal + APIs | HU-20, HU-21, HU-23 | `build_quality_scorecard`, `datos_gov_api.py` |
 | Sprint 3 | Modelo predictivo | HU-13, HU-14, HU-15, HU-16 | `model_trainer.py` |
 | Sprint 4 | Chatbot conversacional | HU-17, HU-18, HU-19 | `chatbot_nlp.py` |
-| Sprint 5 | Dashboard y storytelling | HU-02, HU-25, HU-26 | `dashboard.html`, `app.py` |
+| Sprint 5 | Dashboard y storytelling | HU-02, HU-25 | `dashboard.html`, `app.py` |
 | Sprint 6 | Casos de uso adicionales y cierre | HU-04, HU-05, HU-06, HU-08, HU-10, HU-12 | Documentación final + sustentación |
 
 **Sprint Planning:** reunión inicial por sprint para seleccionar historias del
