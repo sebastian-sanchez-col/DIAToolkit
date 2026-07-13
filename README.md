@@ -24,6 +24,13 @@ interactivo con un simulador de escenarios y un chatbot conversacional.
 | Validación del modelo | GroupKFold (5 folds) por comuna, N=84 — R² ≈ 0.64 (± 0.11) |
 | Equipo | Juan Sebastián Sanchez (líder), Juan Felipe Jurado, Sonia Luz González Pardo |
 
+## Tipo de análisis y resultados clave
+
+- **Tipo de análisis:** Predictivo (regresión, Random Forest Regressor) + clustering no supervisado (KMeans) + clasificación de intención (TF-IDF + Logistic Regression para el chatbot).
+- **Modelo principal:** Random Forest Regressor, validado con GroupKFold (5 folds) agrupado por comuna, N=84 → **R² ≈ 0.64 (± 0.11)**.
+- **Hallazgo clave:** las comunas con mayor participación relativa en régimen subsidiado de salud (r = -0.38) e inclusión social (r = -0.34) muestran, en promedio, **menor** inversión pública histórica — evidencia de una posible desalineación entre necesidad social y asignación de recursos (correlación, no causalidad; ver [`conclusiones.md`](docs/conclusiones.md) para el detalle completo y las limitaciones documentadas).
+- **Impacto potencial:** ver tabla completa en [`conclusiones.md`](docs/conclusiones.md#4-impacto-potencial).
+
 ## Documentación del proyecto
 
 Este README es solo un punto de entrada. El detalle completo está separado en `docs/`:
@@ -97,3 +104,9 @@ DIAToolkit/
 * Repositorio público: https://github.com/sebastian-sanchez-col/DIAToolkit.git
 * Registrado en la sección de usos de datos.gov.co: https://herramientas.datos.gov.co/usos/distributional-impact-analysis-toolkit
 * Contenedor listo (Docker Hub): `docker pull ataches/diatoolkit:latest`
+
+### Enlaces de acceso
+
+* [Descargar archivo original (.PPTX)](recursos/presentacion.pptx) — *Para abrir y editar en PowerPoint.*
+* [Ver presentación en línea (.PDF)](recursos/presentacion.pdf) — *Abre el visor interactivo de GitHub o GitLab.*
+* [Descarga directa (.PDF)](recursos/presentacion.pdf?raw=true&inline=false) — *Fuerza la descarga en ambas plataformas.*
