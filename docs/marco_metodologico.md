@@ -53,6 +53,6 @@ distribuidas en 10 épicas y un plan de 6 sprints:
 
 | Rol                                  | Responsable | Enfoque |
 |--------------------------------------|---|---|
-| Desarollador - Product Owner / líder | Sebastian Sanchez | Priorización de backlog, arquitectura Flask, dashboard, chatbot |
-| Data Science                         | Sonia Gonzalez | Limpieza y normalización de datos, diagnósticos de calidad |
+| Desarollador - Product Owner / líder | Juan Sebastián Sanchez | Priorización de backlog, arquitectura Flask, dashboard, chatbot |
+| Data Science                         | Sonia Luz González Pardo | Limpieza y normalización de datos, diagnósticos de calidad |
 | Data Science                         | Juan Felipe Jurado | Entrenamiento y validación del modelo |

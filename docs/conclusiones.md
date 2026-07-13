@@ -59,21 +59,26 @@ metodológicas que hoy están dispersas como comentarios y `print()` a lo largo 
 
 ### 1.5 Modelo predictivo (Random Forest)
 
-- La validación `GroupKFold` agrupada por comuna (dejando comunas **completas** fuera del
-  entrenamiento en cada fold, no solo años sueltos de la misma comuna) mide generalización real
-  a territorio no visto. El reporte de consola en cada ejecución expone el R² y el MAE promedio
-  por fold si el R² promedio cae bajo 0.3, el pipeline lo advierte explícitamente en vez de
-  ocultarlo.
-- El diagnóstico de dependencia parcial (PDP) sobre el estrato socioeconómico
-  (`diagnostic_partial_dependence_stratum`) verifica si el efecto de esa variable sobre la
-  predicción es monotónico o errático. Cuando aparecen tramos crecientes y decrecientes
-  simultáneos, se interpreta como posible inestabilidad por N bajo o interacción compleja con
-  otras variables, no como una relación causal confiable con el estrato.
-- El primer tramo de la curva PDP (el extremo del rango de estrato observado) se audita aparte:
-  un salto desproporcionado ahí suele indicar que hay muy pocas comunas/años observados en ese
-  extremo, y se marca como zona del modelo a tratar con cautela.
+- Validación GroupKFold (5 folds, agrupado por comuna, N=84 = 21 territorios × 4 años):
+  **R² ≈ 0.64 (± 0.11)**. El modelo explica en promedio el 64% de la variabilidad de la
+  inversión en comunas que NO vio durante ese fold de entrenamiento.
+- El desempeño varía por fold (R² entre 0.45 y 0.77 según qué comunas quedaron fuera),
+  variación esperable con N=84, no un error del pipeline.
+- Correlación simple entre vulnerabilidad e inversión histórica (N=84):
+  - `health_affiliates_share` (afiliados régimen subsidiado): r = -0.38
+  - `inclusion_share` (beneficiarios inclusión/discapacidad): r = -0.34
+  - `mean_utility_stratum` (estrato): r = -0.16 (no monotónico según el PDP del modelo)
 
 ## 2. Interpretación
+
+Las tres correlaciones simples son **negativas**: las comunas con mayor participación
+relativa en régimen subsidiado de salud e inclusión social muestran, en promedio, **menor**
+inversión pública histórica, no mayor. Esto es evidencia empírica de una posible
+**desalineación entre necesidad social y asignación de recursos** en el periodo 2015-2018.
+
+Importante: esto es **correlación, no causalidad**, y N=84 es una muestra pequeña. El efecto
+del estrato en particular no es monotónico según el diagnóstico PDP (`diagnostic_partial_dependence_stratum`),
+por lo que no debe leerse como una relación causal confirmada.
 
 Tomando los hallazgos anteriores en conjunto, la evidencia disponible **no permite afirmar de
 forma concluyente** que la inversión pública en Medellín (2015-2018) haya seguido un criterio

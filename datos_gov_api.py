@@ -23,7 +23,12 @@ def fetch_dataset_from_api(dataset_id, params=None, max_records=50_000):
     offset = 0
 
     while offset < max_records:
-        query_params = {"$limit": DEFAULT_PAGE_SIZE, "$offset": offset, **(params or {})}
+        query_params = {
+            "$limit": DEFAULT_PAGE_SIZE,
+            "$offset": offset,
+            "$order": ":id",
+            **(params or {})
+        }
         try:
             response = requests.get(url, params=query_params,
                                      headers=REQUEST_HEADERS,
