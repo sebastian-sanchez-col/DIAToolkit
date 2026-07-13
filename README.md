@@ -91,3 +91,4 @@ DIAToolkit/
 
 * Repositorio público: https://github.com/sebastian-sanchez-col/DIAToolkit.git
 * Registrado en la sección de usos de datos.gov.co: https://herramientas.datos.gov.co/usos/distributional-impact-analysis-toolkit
+* Contenedor listo (Docker Hub):** `docker pull ataches/diatoolkit:latest`
